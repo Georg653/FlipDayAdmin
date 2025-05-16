@@ -1,42 +1,28 @@
 // src/router/AppRoutes.tsx
 import React, { lazy, Suspense } from 'react';
-import { Routes, Route, BrowserRouter, Navigate } from 'react-router-dom'; // Добавил BrowserRouter
+import { Routes, Route, Navigate } from 'react-router-dom';
+import AdminLayout from '../components/layout/AdminLayout';
 
-// Импортируем нашу страницу достижений
 const AchievementsPage = lazy(() => import('../pages/admin/AchievementsPage/AchievementsPage'));
+const LearningPagesPage = lazy(() => import('../pages/admin/LearningPagesPage/LearningPagesPage')); // Раскомментировали и добавили
 
-// Компонент для отображения загрузки
-const LoadingFallback = () => <div>Loading...</div>;
+const LoadingFallback = () => <div style={{ padding: '20px', textAlign: 'center' }}>Загрузка страницы...</div>;
 
 const AppRoutes: React.FC = () => {
   return (
     <Suspense fallback={<LoadingFallback />}>
       <Routes>
-        {/* Наша страница достижений */}
-        <Route path="/admin/achievements" element={<AchievementsPage />} />
+        <Route path="/admin" element={<AdminLayout />}>
+          <Route path="achievements" element={<AchievementsPage />} />
+          <Route path="learning-pages" element={<LearningPagesPage />} /> {/* <--- НОВЫЙ РОУТ */}
+          <Route index element={<Navigate to="achievements" replace />} /> 
+        </Route>
 
-        {/* Редирект с главной страницы на страницу достижений (или куда тебе нужно) */}
         <Route path="/" element={<Navigate to="/admin/achievements" replace />} />
-        
-        {/* Страница не найдена */}
-        <Route path="*" element={<div>404 - Page Not Found</div>} />
+        <Route path="*" element={<div style={{ padding: '20px', textAlign: 'center' }}>404 - Страница не найдена</div>} />
       </Routes>
     </Suspense>
   );
 };
 
-// Важно: AppRoutes должен быть обернут в BrowserRouter где-то выше по дереву компонентов,
-// обычно в main.tsx или App.tsx.
-// Если он еще не обернут, можно обернуть его здесь для простоты,
-// или лучше сделать это в main.tsx.
-
-// Вариант A: Обертка здесь (менее предпочтительно для больших приложений)
-// const AppRouterWithProvider: React.FC = () => (
-//   <BrowserRouter>
-//     <AppRoutes />
-//   </BrowserRouter>
-// );
-// export default AppRouterWithProvider;
-
-// Вариант B: Просто экспортируем AppRoutes, а BrowserRouter будет в main.tsx (предпочтительно)
 export default AppRoutes;
