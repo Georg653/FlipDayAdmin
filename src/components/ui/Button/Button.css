@@ -1,0 +1,100 @@
+/* src/components/ui/Button/Button.css */
+.button-base {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 0.375rem; /* 6px */
+  font-weight: 500;
+  transition-property: color, background-color, border-color, text-decoration-color, fill, stroke, opacity, box-shadow, transform, filter, backdrop-filter, -webkit-backdrop-filter;
+  transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+  transition-duration: 150ms;
+  cursor: pointer;
+  border: 1px solid transparent;
+  padding: 0.5rem 1rem; /* Default padding */
+}
+.button-base:focus-visible {
+  outline: 2px solid主题色; /* Replace with your theme color or use ring utilities */
+  outline-offset: 2px;
+}
+.button-base:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Variants */
+.button-default {
+  background-color: #709eff; /* blue-600 */
+  color: white;
+}
+.button-default:hover {
+  background-color: #6481ce; /* blue-700 */
+}
+
+.button-outline {
+  border-color: #d1d5db; /* gray-300 */
+  background-color: white;
+  color: #374151; /* gray-700 */
+}
+.button-outline:hover {
+  background-color: #f3f4f6; /* gray-100 */
+}
+
+.button-link {
+  color: #2563eb; /* blue-600 */
+  text-decoration-line: underline;
+  text-underline-offset: 4px;
+  background-color: transparent;
+  border: none;
+  padding: 0;
+}
+.button-link:hover {
+  text-decoration-thickness: 2px;
+}
+
+.button-destructive {
+  background-color: #dc2626; /* red-600 */
+  color: white;
+}
+.button-destructive:hover {
+  background-color: #b91c1c; /* red-700 */
+}
+
+.button-success {
+  background-color: #796aff; /* green-600 */
+  color: white;
+}
+.button-success:hover {
+  background-color: #9fa4ff; /* green-700 */
+}
+
+/* Sizes */
+.button-size-default {
+  padding: 0.5rem 1rem;
+  font-size: 0.875rem; /* 14px */
+}
+.button-size-sm {
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem; /* 12px */
+}
+.button-size-lg {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem; /* 16px */
+}
+.button-size-icon {
+  padding: 0.5rem;
+  height: 2.5rem; /* 40px */
+  width: 2.5rem;  /* 40px */
+}
+
+/* Custom Variants from your example (can be combined or override base variants) */
+.button-custom-save {
+  /* Example: Make it green if not already covered by button-success */
+  /* background-color: #10B981; */
+  /* color: white; */
+}
+.button-custom-cancel {
+  /* Example: Make it gray or outlined */
+  /* background-color: #F3F4F6; */
+  /* color: #374151; */
+  /* border: 1px solid #D1D5DB; */
+}

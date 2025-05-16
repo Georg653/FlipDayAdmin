@@ -1,0 +1,40 @@
+/* src/components/ui/ImageUpload/ImageUpload.css */
+.image-upload-container {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem; /* 8px */
+}
+
+.image-upload-label {
+  font-size: 0.875rem; /* 14px */
+  font-weight: 500;
+  color: #374151; /* gray-700 */
+}
+
+.image-upload-preview-area {
+  width: 128px; /* 8rem */
+  height: 128px; /* 8rem */
+  border: 1px dashed #d1d5db; /* gray-300 */
+  border-radius: 0.375rem; /* 6px */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background-color: #f9fafb; /* gray-50 */
+}
+
+.image-upload-preview {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+}
+
+.image-upload-placeholder {
+  font-size: 0.875rem; /* 14px */
+  color: #9ca3af; /* gray-400 */
+  text-align: center;
+}
+
+.image-upload-button {
+  width: fit-content;
+}

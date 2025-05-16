@@ -1,0 +1,73 @@
+/* src/index.css */
+
+/* Импорт шрифта Montserrat с Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@300;400;500;600;700&display=swap');
+
+/* Сброс стандартных стилей и box-sizing */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: 'Montserrat', sans-serif; /* Применяем Montserrat ко всему */
+  line-height: 1.6;
+  color: #333; /* Основной цвет текста */
+  background-color: #f8f9fa; /* Базовый светлый фон, если градиент не покрывает всё */
+
+  /* Градиентный анимированный фон */
+  /* Доминирующий цвет - белый, с переливами фиолетового и синего */
+  background: linear-gradient(135deg, #e2f1ff 40%, #fcb2ff 65%, #c5c5ff 80%, #ffffff 95%);
+  background-size: 400% 400%; /* Увеличиваем размер для плавной анимации */
+  animation: gradientAnimation 10s ease infinite;
+  min-height: 100vh; /* Чтобы фон занимал всю высоту экрана */
+}
+
+@keyframes gradientAnimation {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Можно добавить стили для ссылок, заголовков и т.д., если нужно */
+a {
+  color: #007bff; /* Пример цвета ссылок */
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+/* Улучшение читаемости для инпутов и кнопок */
+input,
+button,
+textarea,
+select {
+  font-family: inherit; /* Наследуем шрифт Montserrat */
+  font-size: inherit;
+}
+
+/* Стили для контейнера приложения, если он есть (например, #root) */
+#root {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+}
+
+/* Дополнительные глобальные стили для админки, если нужно */
+/* Например, основной цвет акцента */
+:root {
+  --admin-primary-color: #6a11cb; /* Фиолетовый для акцентов */
+  --admin-secondary-color: #2575fc; /* Синий для акцентов */
+  --admin-text-dark: #333;
+  --admin-text-light: #555;
+  --admin-border-color: #e0e0e0;
+  --admin-background-light: #ffffff;
+  --admin-background-card: #fdfdff; /* Чуть отличен от белого для карточек */
+}
+
+/* Переопределяем цвета для UI компонентов, если они используют CSS переменные */
+/* Например, в Button.css можно использовать var(--admin-primary-color) */

@@ -1,0 +1,112 @@
+/* src/styles/admin/ui/Table.css */
+.table-container {
+  background-color: #fff;
+  border-radius: 0.5rem; /* 8px */
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  overflow: hidden; /* Для скругления углов table-scroll-wrapper */
+}
+
+.table-scroll-wrapper {
+  overflow-x: auto; /* Позволяет горизонтальный скролл для широких таблиц */
+}
+
+.table-main {
+  width: 100%;
+  border-collapse: collapse; /* Убирает двойные рамки */
+  font-size: 0.875rem; /* 14px */
+  text-align: left;
+}
+
+.table-header-row th {
+  background-color: #f9fafb; /* gray-50 */
+  padding: 0.75rem 1rem; /* 12px 16px */
+  font-weight: 600;
+  color: #374151; /* gray-700 */
+  border-bottom: 1px solid #e5e7eb; /* gray-200 */
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+}
+
+.table-header-cell-actions {
+  text-align: right;
+}
+
+.table-body-row {
+  border-bottom: 1px solid #f3f4f6; /* gray-100 */
+}
+.table-body-row:last-child {
+  border-bottom: none;
+}
+.table-body-row:hover {
+  background-color: #f9fafb; /* gray-50 */
+}
+
+.table-body-cell {
+  padding: 0.75rem 1rem;
+  color: #4b5563; /* gray-600 */
+  vertical-align: middle; /* Выравнивание по центру, если ячейки разной высоты */
+}
+
+.table-image-thumbnail {
+  width: 40px;
+  height: 40px;
+  object-fit: cover;
+  border-radius: 0.25rem; /* 4px */
+  border: 1px solid #e5e7eb; /* gray-200 */
+}
+.table-no-image {
+  font-size: 0.75rem;
+  color: #9ca3af; /* gray-400 */
+}
+
+.table-cell-description {
+  max-width: 250px; /* Ограничение ширины для длинных описаний */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.table-cell-description:hover { /* Показать полное описание при наведении, если нужно */
+    /* white-space: normal;
+    overflow: visible; */
+}
+
+
+.table-actions-container {
+  display: flex;
+  justify-content: flex-end;
+  gap: 0.5rem; /* 8px */
+}
+.table-action-button-edit,
+.table-action-button-delete {
+  /* Дополнительные стили, если нужны, например, для цвета */
+}
+.table-action-button-delete {
+  color: #dc2626; /* red-600 */
+}
+.table-action-button-delete:hover {
+  color: #b91c1c; /* red-700 */
+}
+
+
+.table-status-message {
+  padding: 2rem;
+  text-align: center;
+  font-size: 1rem;
+  color: #6b7280; /* gray-500 */
+}
+.table-status-loading {
+  /* Дополнительные стили для индикатора загрузки */
+}
+.table-status-error {
+  color: #ef4444; /* red-500 */
+  background-color: #fef2f2; /* red-50 */
+  border: 1px solid #fca5a5; /* red-300 */
+  border-radius: 0.375rem;
+}
+.table-status-empty {
+  /* Дополнительные стили для сообщения о пустой таблице */
+}
+
+.table-pagination-wrapper {
+    padding: 0 1rem 1rem 1rem; /* Отступы для обертки пагинации */
+}

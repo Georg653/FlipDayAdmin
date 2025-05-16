@@ -1,0 +1,41 @@
+/* src/styles/admin/ui/Header.css */
+.page-header {
+  background-color: #fff;
+  padding: 1rem 1.5rem; /* 16px 24px */
+  border-radius: 0.5rem; /* 8px */
+  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px -1px rgba(0, 0, 0, 0.1);
+  margin-bottom: 1.5rem;
+}
+
+.page-header-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem; /* Отступ, если будут фильтры */
+}
+.page-header-top:last-child { /* Если нет фильтров, убираем нижний отступ */
+    margin-bottom: 0;
+}
+
+
+.page-header-title {
+  font-size: 1.5rem; /* 24px */
+  font-weight: 700;
+  color: #111827; /* gray-900 */
+}
+
+.page-header-filters {
+  display: grid;
+  /* grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); */
+  gap: 1rem; /* 16px */
+  padding-top: 1rem;
+  border-top: 1px solid #e5e7eb; /* gray-200 */
+}
+
+.page-header-filters.grid-filters { /* Для JobAssignments у тебя был такой класс */
+    /* Можешь добавить специфичные стили для grid-filters */
+}
+
+.filter-item {
+    /* Стили для каждого элемента фильтра, если нужно */
+}
