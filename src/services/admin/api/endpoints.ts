@@ -1,22 +1,18 @@
 // src/services/admin/api/endpoints.ts
 
-// Т.к. baseURL уже есть в axiosInstance (предположительно '/v1/admin'),
-// здесь можно использовать относительные пути от /v1/admin
-
 export const ENDPOINTS = {
   // Achievements
   ACHIEVEMENTS: `achievements/`,
   ACHIEVEMENT_DETAIL: (achievementId: number) => `achievements/${achievementId}/`,
 
-  // --- НОВЫЕ ЭНДПОИНТЫ ДЛЯ LEARNING PAGES ---
-  // Для создания и получения списка страниц в контексте подтемы
+  // Learning Pages
   LEARNING_PAGES_BY_SUBTOPIC: (subtopicId: number) => `learning-pages/subtopics/${subtopicId}/pages/`,
-  // Для получения, обновления, удаления конкретной страницы по ее ID
   LEARNING_PAGE_DETAIL: (pageId: number) => `learning-pages/pages/${pageId}/`,
+ 
+  LEARNING_SUBTOPICS_BY_TOPIC: (topicId: number) => `subtopics/topics/${topicId}/subtopics/`,
   
-  // Если/когда появится API для списка подтем, добавим сюда:
-  // SUBTOPICS_LIST: `subtopics/`, // Пример
-  // --- КОНЕЦ НОВЫХ ЭНДПОИНТОВ ---
+  LEARNING_SUBTOPIC_DETAIL: (subtopicId: number) => `subtopics/subtopics/${subtopicId}/`,
 
-  // ... другие эндпоинты из твоего проекта ...
+    LEARNING_TOPICS_LIST: `topics/`, // Пример, если будет такой эндпоинт для списка тем
+  
 };

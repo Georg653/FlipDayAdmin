@@ -1,37 +1,31 @@
 // src/types/admin/LearningPages/learningPage_props.types.ts
-import type { LearningPage, LearningPageFormData, SubtopicOption } from './learningPage.types';
+import type React from 'react';
+import type {
+  LearningPage,
+  LearningPageFormData,
+  SubtopicOption,
+  LearningPageFormOptions, // Импортируем для использования в компоненте формы
+} from './learningPage.types';
 
-/**
- * Пропсы для компонента LearningPageForm.
- */
-export interface LearningPageFormProps {
-  formData: LearningPageFormData;
-  handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
-  // handleSelectChange: (fieldName: string, value: string) => void; // Если будут селекты
-  handleSubmit: (e: React.FormEvent) => void;
+// Пропсы для компонента LearningPageForm.tsx
+// Он будет принимать опции для своего внутреннего хука useLearningPageForm
+// и функцию для управления своей видимостью.
+export interface LearningPageFormProps extends LearningPageFormOptions {
   setShowForm: (show: boolean) => void;
-  isSubmitting: boolean;
-  learningPageToEdit?: LearningPage | null;
-  // subtopicIdFromContext?: number; // ID подтемы, если форма вызывается в контексте конкретной подтемы
-  // subtopicOptions?: SubtopicOption[]; // Опции для селекта подтем, если он будет
-  formError: string | null;
+  // subtopicOptions?: SubtopicOption[]; // Если селект подтем будет рендериться в форме
 }
 
-/**
- * Пропсы для компонента LearningPagesHeader.
- */
+// Пропсы для компонента LearningPagesHeader.tsx
 export interface LearningPagesHeaderProps {
   isLoading: boolean;
   onShowForm: () => void;
-  // subtopicIdFilter: string; // Для инпута/селекта subtopic_id
-  // onSubtopicIdFilterChange: (value: string) => void; // Для инпута/селекта subtopic_id
-  // subtopicOptions?: SubtopicOption[]; // Опции для селекта подтем
-  // selectedSubtopicName?: string; // Для отображения названия выбранной подтемы
+  currentSubtopicIdInput: string;
+  onSubtopicIdChange: (value: string) => void;
+  subtopicOptions?: SubtopicOption[];
+  loadingSubtopics?: boolean;
 }
 
-/**
- * Пропсы для компонента LearningPagesTable.
- */
+// Пропсы для компонента LearningPagesTable.tsx
 export interface LearningPagesTableProps {
   learningPages: LearningPage[];
   isLoading: boolean;
@@ -39,9 +33,8 @@ export interface LearningPagesTableProps {
   onEdit: (learningPage: LearningPage) => void;
   onDelete: (id: number) => void;
   currentPage: number;
-  totalItems: number; // Будет проблемой, т.к. API не возвращает
+  totalItems: number;
   itemsPerPage: number;
   handlePreviousPage: () => void;
   handleNextPage: () => void;
-  // currentSubtopicId?: number | null; // Для информации, какие страницы отображаются
 }
