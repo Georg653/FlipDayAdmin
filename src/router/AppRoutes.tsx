@@ -5,7 +5,8 @@ import AdminLayout from '../components/layout/AdminLayout'; // или '../pages/
 
 const AchievementsPage = lazy(() => import('../pages/admin/AchievementsPage/AchievementsPage'));
 const LearningPagesPage = lazy(() => import('../pages/admin/LearningPagesPage/LearningPagesPage'));
-const LearningSubtopicsPage = lazy(() => import('../pages/admin/LearningSubtopicsPage/LearningSubtopicsPage')); // <-- НОВЫЙ ИМПОРТ
+const LearningSubtopicsPage = lazy(() => import('../pages/admin/LearningSubtopicsPage/LearningSubtopicsPage'));
+const LearningTopicsPage = lazy(() => import('../pages/admin/LearningTopicsPage/LearningTopicsPage')); // <-- НОВЫЙ ИМПОРТ
 
 const LoadingFallback = () => <div style={{ padding: '20px', textAlign: 'center' }}>Загрузка страницы...</div>;
 
@@ -15,8 +16,9 @@ const AppRoutes: React.FC = () => {
       <Routes>
         <Route path="/admin" element={<AdminLayout />}>
           <Route path="achievements" element={<AchievementsPage />} />
+          <Route path="learning-topics" element={<LearningTopicsPage />} /> {/* <-- НОВЫЙ РОУТ */}
+          <Route path="learning-subtopics" element={<LearningSubtopicsPage />} />
           <Route path="learning-pages" element={<LearningPagesPage />} />
-          <Route path="learning-subtopics" element={<LearningSubtopicsPage />} /> {/* <-- НОВЫЙ РОУТ */}
           <Route index element={<Navigate to="achievements" replace />} /> 
         </Route>
 

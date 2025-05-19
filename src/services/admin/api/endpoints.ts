@@ -8,11 +8,12 @@ export const ENDPOINTS = {
   // Learning Pages
   LEARNING_PAGES_BY_SUBTOPIC: (subtopicId: number) => `learning-pages/subtopics/${subtopicId}/pages/`,
   LEARNING_PAGE_DETAIL: (pageId: number) => `learning-pages/pages/${pageId}/`,
- 
-  LEARNING_SUBTOPICS_BY_TOPIC: (topicId: number) => `subtopics/topics/${topicId}/subtopics/`,
   
+  // Learning Subtopics
+  LEARNING_SUBTOPICS_BY_TOPIC: (topicId: number) => `subtopics/topics/${topicId}/subtopics/`,
   LEARNING_SUBTOPIC_DETAIL: (subtopicId: number) => `subtopics/subtopics/${subtopicId}/`,
 
-    LEARNING_TOPICS_LIST: `topics/`, // Пример, если будет такой эндпоинт для списка тем
-  
+  // Learning Topics
+  LEARNING_TOPICS_LIST: `topics/`, 
+  LEARNING_TOPIC_DETAIL: (topicId: number) => `topics/${topicId}/`,
 };

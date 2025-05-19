@@ -55,7 +55,7 @@ export const useLearningSubtopicForm = (options: LearningSubtopicFormOptions) =>
     }
   }, [learningSubtopicToEdit, resetForm, topicIdForCreate, options.topicIdForCreate, formData.topic_id]);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = ( e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
     setFormData((prev) => ({ ...prev, [name]: value }));
     if (formError) setFormError(null);

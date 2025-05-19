@@ -1,18 +1,22 @@
 // src/types/admin/LearningSubtopics/learningSubtopic_props.types.ts
-import type { LearningSubtopic, LearningSubtopicFormData, TopicOption, LearningSubtopicFormOptions } from './learningSubtopic.types';
-import type React from 'react'; // Импортируем React для типов событий
+import type React from 'react';
+import type {
+  LearningSubtopic,
+  LearningSubtopicFormData,
+  TopicOption,
+} from './learningSubtopic.types';
 
-// Расширяем LearningSubtopicFormOptions для пропсов компонента формы
-export interface LearningSubtopicFormProps extends LearningSubtopicFormOptions {
+export interface LearningSubtopicFormProps {
   formData: LearningSubtopicFormData;
-  handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
+  isSubmitting: boolean;
+  formError: string | null;
+   handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
   handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
   handleSubmit: (e: React.FormEvent) => void;
   setShowForm: (show: boolean) => void;
-  isSubmitting: boolean;
-  // learningSubtopicToEdit уже есть в LearningSubtopicFormOptions
-  topicOptions?: TopicOption[]; // Для селекта тем, если будет
-  formError: string | null;
+  handleCancel: () => void;
+  learningSubtopicToEdit?: LearningSubtopic | null;
+  topicOptions?: TopicOption[];
 }
 
 export interface LearningSubtopicsHeaderProps {
@@ -21,7 +25,7 @@ export interface LearningSubtopicsHeaderProps {
   currentTopicIdInput: string;
   onTopicIdChange: (value: string) => void;
   topicOptions?: TopicOption[];
-  loadingTopics?: boolean; // Если будет загрузка тем для селекта
+  loadingTopics?: boolean;
 }
 
 export interface LearningSubtopicsTableProps {

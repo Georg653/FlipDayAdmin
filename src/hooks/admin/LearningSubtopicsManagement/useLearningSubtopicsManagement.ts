@@ -3,8 +3,8 @@ import { useState, useEffect, useCallback } from 'react';
 import type {
   LearningSubtopic,
   LearningSubtopicFilterParams,
-  TopicOption,
 } from '../../../types/admin/LearningSubtopics/learningSubtopic.types';
+import type { TopicOption as LearningTopicOptionForSelect } from '../../../types/admin/LearningTopics/learningTopic.types';
 import { LearningSubtopicsApi } from '../../../services/admin/LearningSubtopics/learningSubtopicsApi';
 import { ITEMS_PER_PAGE_LEARNING_SUBTOPICS } from '../../../constants/admin/LearningSubtopics/learningSubtopics.constants';
 
@@ -16,36 +16,39 @@ export const useLearningSubtopicsManagement = () => {
   const [totalItems, setTotalItems] = useState(0);
   const [itemsPerPage, setItemsPerPage] = useState(ITEMS_PER_PAGE_LEARNING_SUBTOPICS);
   const [currentTopicId, setCurrentTopicId] = useState<number | null>(null);
-  const [topicOptions, setTopicOptions] = useState<TopicOption[]>([]);
-  const [loadingTopics, setLoadingTopics] = useState(false);
+  const [topicOptions, setTopicOptions] = useState<LearningTopicOptionForSelect[]>([]);
+  const [loadingTopics, setLoadingTopics] = useState<boolean>(false);
   const [showForm, setShowForm] = useState(false);
   const [learningSubtopicToEdit, setLearningSubtopicToEdit] = useState<LearningSubtopic | null>(null);
   const [topicIdForForm, setTopicIdForForm] = useState<number | null>(null);
 
   const fetchTopics = useCallback(async () => {
-    // setLoadingTopics(true);
-    // try {
-    //   const response = await LearningSubtopicsApi.getTopics({ limit: 1000 });
-    //   setTopicOptions(response.items);
-    //   if (response.items.length > 0 && !currentTopicId) {
-    //     // setCurrentTopicId(response.items[0].id); // Можно выбрать первую тему по умолчанию
-    //   }
-    // } catch (err) {
-    //   console.error("Failed to load topics", err);
-    // } finally {
-    //   setLoadingTopics(false);
-    // }
-  }, [/* currentTopicId */]); // Зависимость убрана, пока не используется
+     console.log("Fetching topics...");
+    setLoadingTopics(true);
+    setError(null); // Сбрасываем общую ошибку перед загрузкой тем
+    try {
+      const response = await LearningSubtopicsApi.getTopics({ limit: 1000 }); // Загружаем много тем для селекта
+      setTopicOptions(response.items);
+    } catch (err: any) {
+      const message = err.response?.data?.detail || 'Не удалось загрузить список тем.';
+      console.error("Failed to load topics for select", err);
+      setError(message); // Устанавливаем ошибку, если темы не загрузились
+      setTopicOptions([]); // Очищаем опции при ошибке
+    } finally {
+      setLoadingTopics(false);
+    }
+  }, []);
 
   useEffect(() => {
-    fetchTopics(); // Вызываем один раз для загрузки тем, если API будет
+    console.log("Calling fetchTopics effect"); 
+    fetchTopics();
   }, [fetchTopics]);
 
   const fetchLearningSubtopics = useCallback(async () => {
     if (!currentTopicId) {
       setLearningSubtopics([]);
       setTotalItems(0);
-      setError("Пожалуйста, выберите или введите ID темы.");
+      setError("Пожалуйста, выберите тему для отображения подтем."); // Изменил сообщение
       return;
     }
     setLoading(true);
@@ -67,12 +70,11 @@ export const useLearningSubtopicsManagement = () => {
       }
     } catch (err: any) {
       const message = err.response?.data?.detail || 'Не удалось загрузить подтемы.';
-      if (err.response?.status === 404 && err.response?.data?.detail?.includes("Topic")) {
-        setError(`Тема с ID ${currentTopicId} не найдена.`);
+      if (err.response?.status === 404 && err.response?.data?.detail?.includes("Topic with id")) { // Более точная проверка ошибки
+        setError(`Тема с ID ${currentTopicId} не найдена или не содержит подтем.`);
       } else {
         setError(message);
       }
-      console.error(message, err);
       setLearningSubtopics([]);
       setTotalItems(0);
     } finally {
@@ -86,26 +88,31 @@ export const useLearningSubtopicsManagement = () => {
     } else {
       setLearningSubtopics([]);
       setTotalItems(0);
+      if (topicOptions.length > 0) { // Если темы загружены, но ни одна не выбрана
+        setError("Пожалуйста, выберите тему для отображения подтем.");
+      } else if (!loadingTopics) { // Если темы не загрузились (и не грузятся)
+        // Ошибка уже должна быть установлена в fetchTopics
+      }
     }
-  }, [currentTopicId, fetchLearningSubtopics]);
+  }, [currentTopicId, fetchLearningSubtopics, topicOptions.length, loadingTopics]);
 
   const handleTopicChange = (topicIdString: string) => {
     const id = parseInt(topicIdString, 10);
     setCurrentTopicId(isNaN(id) || id <= 0 ? null : id);
     setCurrentPage(1);
-    setError(null);
+    setError(null); // Сбрасываем ошибку при смене темы
   };
 
   const handleEdit = useCallback((subtopic: LearningSubtopic) => {
     setLearningSubtopicToEdit(subtopic);
-    setTopicIdForForm(subtopic.topic_id); // Используем topic_id из самой подтемы
+    setTopicIdForForm(subtopic.topic_id);
     setShowForm(true);
   }, []);
 
   const handleShowAddForm = useCallback(() => {
     if (!currentTopicId) {
-      alert("Сначала выберите или введите ID темы!");
-      setError("Сначала выберите или введите ID темы, для которой хотите создать подтему.");
+      alert("Сначала выберите тему!");
+      setError("Сначала выберите тему, для которой хотите создать подтему.");
       return;
     }
     setLearningSubtopicToEdit(null);
@@ -114,11 +121,10 @@ export const useLearningSubtopicsManagement = () => {
   }, [currentTopicId]);
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Вы уверены, что хотите удалить эту подтему и все связанные страницы?')) return;
+    if (!confirm('Вы уверены, что хотите удалить эту подтему?')) return;
     setError(null);
     try {
       await LearningSubtopicsApi.deleteLearningSubtopic(id);
-      console.log('Подтема успешно удалена!');
       if (learningSubtopics.length === 1 && currentPage > 1) {
         setCurrentPage(prev => prev - 1);
       } else {
@@ -126,7 +132,6 @@ export const useLearningSubtopicsManagement = () => {
       }
     } catch (err: any) {
       const message = err.response?.data?.detail || 'Не удалось удалить подтему.';
-      console.error(message, err);
       setError(message);
     }
   };
@@ -135,8 +140,8 @@ export const useLearningSubtopicsManagement = () => {
     setShowForm(false);
     setLearningSubtopicToEdit(null);
     setTopicIdForForm(null);
-    fetchLearningSubtopics();
-  }, [fetchLearningSubtopics]);
+    fetchLearningSubtopics(); // Перезагружаем подтемы для текущей темы
+  }, [fetchLearningSubtopics]); // fetchLearningSubtopics зависит от currentTopicId
 
   const handleCancelForm = useCallback(() => {
     setShowForm(false);

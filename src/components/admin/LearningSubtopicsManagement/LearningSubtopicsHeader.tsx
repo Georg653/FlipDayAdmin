@@ -3,7 +3,8 @@ import React from 'react';
 import type { LearningSubtopicsHeaderProps } from '../../../types/admin/LearningSubtopics/learningSubtopic_props.types';
 import { Button } from '../../ui/Button/Button';
 import { Input } from '../../ui/Input/Input';
-// import { Select } from '../../ui/Select/Select';
+import { Select } from '../../ui/Select/Select';
+import type { SelectOption as UiSelectOption } from '../../ui/Select/Select';
 import '../../../styles/admin/ui/Header.css';
 
 export const LearningSubtopicsHeader: React.FC<LearningSubtopicsHeaderProps> = ({
@@ -11,13 +12,15 @@ export const LearningSubtopicsHeader: React.FC<LearningSubtopicsHeaderProps> = (
   onShowForm,
   currentTopicIdInput,
   onTopicIdChange,
-  topicOptions,
+  topicOptions, // Это LearningTopicOptionForSelect[] | undefined (если хук еще не отработал)
   loadingTopics,
 }) => {
-  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/[^0-9]/g, '');
-    onTopicIdChange(value);
-  };
+
+  // Более безопасное преобразование
+  const uiTopicSelectOptions: UiSelectOption[] = 
+    Array.isArray(topicOptions) // Проверяем, что это массив
+      ? topicOptions.map(topic => ({ value: topic.id.toString(), label: topic.name }))
+      : []; // Если не массив (например, undefined на первом рендере), то пустой массив
 
   return (
     <div className="page-header">
@@ -25,43 +28,49 @@ export const LearningSubtopicsHeader: React.FC<LearningSubtopicsHeaderProps> = (
         <h2 className="page-header-title">Управление Подтемами Обучения</h2>
         <Button 
           onClick={onShowForm} 
-          disabled={isLoading || !currentTopicIdInput.trim()}
+          disabled={isLoading || loadingTopics || !currentTopicIdInput.trim()}
           customVariant="save"
-          title={!currentTopicIdInput.trim() ? "Сначала введите ID темы" : "Добавить подтему"}
+          title={!currentTopicIdInput.trim() ? "Сначала выберите тему" : "Добавить подтему"}
         >
           Добавить подтему
         </Button>
       </div>
 
       <div className="page-header-filters" style={{ marginTop: '1rem', paddingTop: '1rem', borderTop: '1px solid var(--admin-border-color, #e0e0e0)' }}>
-        <div className="filter-item" style={{ maxWidth: '300px' }}>
-          <label htmlFor="topic_id_filter_lst" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: '500' }}>
-            ID Темы (для просмотра/добавления подтем)*
-          </label>
-          <Input
-            id="topic_id_filter_lst"
-            type="text"
-            inputMode="numeric"
-            pattern="[0-9]*"
-            name="topic_id_filter"
-            placeholder="Введите ID темы"
-            value={currentTopicIdInput}
-            onChange={handleInputChange}
-            disabled={isLoading || loadingTopics}
-          />
-          {/* 
-          <Select
-            id="topic_id_filter_lst"
-            name="topic_id_filter"
-            label="Выберите Тему*"
-            value={currentTopicIdInput}
-            onChange={(e) => onTopicIdChange(e.target.value)}
-            options={topicOptions || []}
-            placeholder="Выберите тему из списка"
-            disabled={isLoading || loadingTopics}
-            required
-          />
-          */}
+        <div className="filter-item" style={{ maxWidth: '400px' }}>
+          {loadingTopics ? (
+            <p>Загрузка тем...</p>
+          ) : uiTopicSelectOptions.length > 0 ? ( // Проверяем длину uiTopicSelectOptions
+            <Select
+              id="topic_id_filter_lst_select"
+              name="topic_id_filter_select"
+              label="Выберите Тему*"
+              value={currentTopicIdInput}
+              onChange={(e) => onTopicIdChange(e.target.value)}
+              options={uiTopicSelectOptions} // Передаем уже преобразованные опции
+              placeholder="-- Выберите тему --"
+              disabled={isLoading}
+              required
+            />
+          ) : (
+            <>
+              <label htmlFor="topic_id_filter_lst_input_fallback" style={{ display: 'block', marginBottom: '0.25rem', fontWeight: '500' }}>
+                ID Темы (введите вручную)*
+              </label>
+              <Input
+                id="topic_id_filter_lst_input_fallback"
+                type="text"
+                inputMode="numeric"
+                pattern="[0-9]*"
+                name="topic_id_filter_input_fallback"
+                placeholder="ID темы (темы не загружены)"
+                value={currentTopicIdInput}
+                onChange={(e) => onTopicIdChange(e.target.value.replace(/[^0-9]/g, ''))}
+                disabled={isLoading}
+              />
+              {!loadingTopics && <small>Не удалось загрузить список тем или тем нет. Введите ID вручную.</small>}
+            </>
+          )}
         </div>
       </div>
     </div>
