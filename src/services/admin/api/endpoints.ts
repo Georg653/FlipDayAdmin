@@ -2,7 +2,8 @@
 
 export const ENDPOINTS = {
   // AUTHENTICATION
-  LOGIN: ``, 
+  LOGIN: ``, // Путь для логина относительно baseURL (если он есть в axiosInstance для auth)
+             // или это может быть полный URL, если auth на другом сервисе/префиксе
   REGISTER: `register/`, 
   TOKEN_REFRESH: `token/refresh/`,
   PASSWORD_RESET_CONFIRM: `password-reset/confirm/`,
@@ -19,8 +20,21 @@ export const ENDPOINTS = {
   STORIES: `stories/`,
   STORY_DETAIL: (storyId: number) => `stories/${storyId}/`,
 
+  // ROUTE CATEGORIES
+  ROUTE_CATEGORIES: `route-categories/`,
+  ROUTE_CATEGORY_DETAIL: (categoryId: number) => `route-categories/${categoryId}/`,
+
+  // POINTS
+  POINTS: `points/`,
+  POINT_DETAIL: (pointId: number) => `points/${pointId}/`,
+  POINT_CONTENT: (pointId: number) => `points/${pointId}/content/`,
+
+  // ROUTES (НОВАЯ СЕКЦИЯ - ДОБАВЛЕНА)
+  ROUTES: `routes/`,
+  ROUTE_DETAIL: (routeId: number) => `routes/${routeId}/`,
+
   // LEARNING TOPICS
-  LEARNING_TOPICS_LIST: `topics/`,
+  LEARNING_TOPICS_LIST: `topics/`, // Убедись, что префикс /learning- или подобный не нужен, если они вложены
   LEARNING_TOPIC_DETAIL: (topicId: number) => `topics/${topicId}/`,
 
   // LEARNING SUBTOPICS
@@ -31,9 +45,8 @@ export const ENDPOINTS = {
   LEARNING_PAGES_BY_SUBTOPIC: (subtopicId: number) => `learning-pages/subtopics/${subtopicId}/pages/`,
   LEARNING_PAGE_DETAIL: (pageId: number) => `learning-pages/pages/${pageId}/`,
 
-  // --- PROPOSALS --- (НОВАЯ СЕКЦИЯ)
-  PROPOSALS: `proposals/`, // Для GET списка предложений
-  PROPOSAL_DETAIL: (proposalId: string) => `proposals/${proposalId}/`, // Для GET одного предложения
-  PROPOSAL_UPDATE_STATUS: (proposalId: string) => `proposals/${proposalId}/status/`, // Для PATCH обновления статуса
-  // --- КОНЕЦ PROPOSALS ---
+  // PROPOSALS
+  PROPOSALS: `proposals/`,
+  PROPOSAL_DETAIL: (proposalId: string) => `proposals/${proposalId}/`,
+  PROPOSAL_UPDATE_STATUS: (proposalId: string) => `proposals/${proposalId}/status/`,
 };

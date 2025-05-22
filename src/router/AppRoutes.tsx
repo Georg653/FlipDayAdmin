@@ -6,12 +6,15 @@ import AdminLayout from '../components/layout/AdminLayout';
 const LoginPage = lazy(() => import('../pages/LoginPage/LoginPage'));
 const RegisterPage = lazy(() => import('../pages/RegisterPage/RegisterPage'));
 const AchievementsPage = lazy(() => import('../pages/admin/AchievementsPage/AchievementsPage'));
+const NewsPage = lazy(() => import('../pages/admin/NewsPage/NewsPage'));
 const StoriesPage = lazy(() => import('../pages/admin/StoriesPage/StoriesPage'));
-const ProposalsPage = lazy(() => import('../pages/admin/ProposalsPage/ProposalsPage')); // <<<--- НОВЫЙ ИМПОРТ
+const ProposalsPage = lazy(() => import('../pages/admin/ProposalsPage/ProposalsPage'));
+const RouteCategoriesPage = lazy(() => import('../pages/admin/RouteCategoriesPage/RouteCategoriesPage'));
+const PointsPage = lazy(() => import('../pages/admin/PointsPage/PointsPage'));
+const RoutesPage = lazy(() => import('../pages/admin/RoutesPage/RoutesPage')); // Этот импорт уже должен работать
 const LearningTopicsPage = lazy(() => import('../pages/admin/LearningTopicsPage/LearningTopicsPage'));
 const LearningSubtopicsPage = lazy(() => import('../pages/admin/LearningSubtopicsPage/LearningSubtopicsPage'));
 const LearningPagesPage = lazy(() => import('../pages/admin/LearningPagesPage/LearningPagesPage'));
-const NewsPage = lazy(() => import('../pages/admin/NewsPage/NewsPage'));
 
 const LoadingFallback = () => <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh', fontSize: '1.2rem' }}>Загрузка страницы...</div>;
 
@@ -26,16 +29,16 @@ const AppRoutes: React.FC = () => {
           <Route path="achievements" element={<AchievementsPage />} />
           <Route path="news" element={<NewsPage />} />
           <Route path="stories" element={<StoriesPage />} />
-          <Route path="proposals" element={<ProposalsPage />} /> {/* <<<--- НОВЫЙ РОУТ */}
+          <Route path="proposals" element={<ProposalsPage />} />
+          <Route path="route-categories" element={<RouteCategoriesPage />} />
+          <Route path="points" element={<PointsPage />} />
+          <Route path="routes" element={<RoutesPage />} /> {/* Этот роут уже должен работать */}
           <Route path="learning-topics" element={<LearningTopicsPage />} />
           <Route path="learning-subtopics" element={<LearningSubtopicsPage />} />
           <Route path="learning-pages" element={<LearningPagesPage />} />
-          {/* Редирект для /admin, можно направить на proposals или оставить achievements */}
           <Route index element={<Navigate to="proposals" replace />} /> 
         </Route>
 
-        {/* Редирект с главной, если пользователь не залогинен, на /login */}
-        {/* Если залогинен, то можно на /admin/proposals или другую стартовую админскую страницу */}
         <Route path="/" element={<Navigate to="/login" replace />} /> 
         
         <Route path="*" element={

@@ -19,6 +19,11 @@ interface NewsTableProps {
   itemsPerPage: number;
 }
 
+// ЗАМЕНИ 'http://localhost:8003' НА АКТУАЛЬНЫЙ АДРЕС ТВОЕГО БЭКЕНДА,
+// ОТКУДА РАЗДАЮТСЯ МЕДИАФАЙЛЫ ДЛЯ НОВОСТЕЙ.
+// Это должен быть корень сервера, к которому будет добавляться относительный путь из item.preview.
+const NEWS_MEDIA_BASE_URL = 'http://localhost:8003'; 
+
 export const NewsTable: React.FC<NewsTableProps> = ({
   newsItems,
   isLoading,
@@ -30,7 +35,7 @@ export const NewsTable: React.FC<NewsTableProps> = ({
   handleNextPage,
   canGoNext,
   canGoPrevious,
-  itemsPerPage,
+  itemsPerPage, 
 }) => {
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return '—';
@@ -58,6 +63,7 @@ export const NewsTable: React.FC<NewsTableProps> = ({
       <div className="table-scroll-wrapper">
         <table className="table-main">
           <thead>
+            {/* ... заголовки таблицы ... */}
             <tr className="table-header-row">
               <th className="table-header-cell">ID</th>
               <th className="table-header-cell">Превью</th>
@@ -69,26 +75,31 @@ export const NewsTable: React.FC<NewsTableProps> = ({
           </thead>
           <tbody>
             {newsItems.map((item) => {
-              // Логируем URL, который приходит от API для каждой новости
-              console.log(`Новость ID ${item.id} - item.preview от API: "${item.preview}"`);
+              let finalImageUrl = item.preview; 
+
+              // Формируем полный URL, если item.preview - относительный путь
+              if (item.preview && !item.preview.startsWith('http://') && !item.preview.startsWith('https://')) {
+                // Убираем ведущий слэш из item.preview, если он есть, чтобы избежать двойных слэшей
+                // и добавляем слэш к NEWS_MEDIA_BASE_URL, если его нет
+                const baseUrl = NEWS_MEDIA_BASE_URL.endsWith('/') ? NEWS_MEDIA_BASE_URL : `${NEWS_MEDIA_BASE_URL}/`;
+                const imagePath = item.preview.startsWith('/') ? item.preview.substring(1) : item.preview;
+                finalImageUrl = `${baseUrl}${imagePath}`;
+              }
               
-              // Используем item.preview напрямую в src
-              const imageUrl = item.preview; 
+              // console.log(`Новость ID ${item.id} - item.preview от API: "${item.preview}" - Финальный URL: "${finalImageUrl}"`);
 
               return (
                 <tr key={item.id} className="table-body-row">
                   <td className="table-body-cell">{item.id}</td>
                   <td className="table-body-cell">
-                    {imageUrl ? (
+                    {finalImageUrl ? (
                       <img 
-                        src={imageUrl} 
-                        alt={item.title} 
+                        src={finalImageUrl} 
+                        alt={item.title || 'Превью новости'} 
                         className="table-image-thumbnail" 
                         onError={(e) => { 
-                          console.error(`ОШИБКА ЗАГРУЗКИ КАРТИНКИ для новости "${item.title}" по URL: ${imageUrl}`);
-                          // Можно временно скрыть сломанную иконку или заменить на плейсхолдер
-                          // (e.target as HTMLImageElement).style.display = 'none'; 
-                          // ===(e.target as HTMLImageElement).src = '/path/to/placeholder-image.png';
+                          console.error(`ОШИБКА ЗАГРУЗКИ КАРТИНКИ для новости ID ${item.id} ("${item.title}") по URL: ${finalImageUrl}`);
+                          // (e.target as HTMLImageElement).style.display = 'none'; // Скрыть сломанное изображение
                         }}
                       />
                     ) : (
@@ -130,7 +141,8 @@ export const NewsTable: React.FC<NewsTableProps> = ({
           </tbody>
         </table>
       </div>
-
+      
+      {(canGoPrevious || canGoNext) && (
         <div className="table-pagination-wrapper">
           <Pagination
             currentPage={currentPage}
@@ -143,6 +155,7 @@ export const NewsTable: React.FC<NewsTableProps> = ({
             canGoPrevious={canGoPrevious}
           />
         </div>
+      )}
     </div>
   );
 };

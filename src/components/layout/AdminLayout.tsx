@@ -36,16 +36,41 @@ const AdminLayout: React.FC = () => {
                 Истории
               </NavLink>
             </li>
-            {/* --- ДОБАВЛЯЕМ ССЫЛКУ НА ПРЕДЛОЖЕНИЯ --- */}
             <li>
               <NavLink 
-                to="/admin/proposals"  // Путь для раздела "Предложения"
+                to="/admin/proposals"
                 className={({ isActive }) => isActive ? "admin-nav-link active" : "admin-nav-link"}
               >
                 Предложения
               </NavLink>
             </li>
-            {/* --- КОНЕЦ ДОБАВЛЕНИЯ --- */}
+            
+            <li className="nav-group-header">Маршруты</li>
+            <li>
+              <NavLink 
+                to="/admin/route-categories"
+                className={({ isActive }) => isActive ? "admin-nav-link active" : "admin-nav-link"}
+              >
+                Категории маршрутов
+              </NavLink>
+            </li>
+            <li>
+              <NavLink 
+                to="/admin/points"
+                className={({ isActive }) => isActive ? "admin-nav-link active" : "admin-nav-link"}
+              >
+                Точки (Локации)
+              </NavLink>
+            </li>
+            <li>
+              <NavLink 
+                to="/admin/routes" 
+                className={({ isActive }) => isActive ? "admin-nav-link active" : "admin-nav-link"}
+              >
+                Маршруты
+              </NavLink>
+            </li>
+            
             <li className="nav-group-header">Обучение</li>
             <li>
               <NavLink 
@@ -73,7 +98,8 @@ const AdminLayout: React.FC = () => {
             </li>
           </ul>
         </nav>
-        {/* ... sidebar-footer ... */}
+        <div className="admin-sidebar-footer">
+        </div>
       </aside>
       <main className="admin-main-content">
         <Outlet />
