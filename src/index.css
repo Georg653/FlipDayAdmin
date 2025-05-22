@@ -22,7 +22,7 @@ body {
   /* Доминирующий цвет - белый, с переливами фиолетового и синего */
   background: linear-gradient(135deg, #e2f1ff 40%, #fcb2ff 65%, #c5c5ff 80%, #ffffff 95%);
   background-size: 400% 400%; /* Увеличиваем размер для плавной анимации */
-  animation: gradientAnimation 10s ease infinite;
+  animation: gradientAnimation 15s ease infinite;
   min-height: 100vh; /* Чтобы фон занимал всю высоту экрана */
 }
 

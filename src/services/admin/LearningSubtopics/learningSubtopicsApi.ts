@@ -27,7 +27,7 @@ export const LearningSubtopicsApi = {
     );
     return {
       items: response.data,
-      total: response.data.length, // API не возвращает total
+      total: response.data.length,
       limit: params.limit,
       offset: params.offset,
     };
@@ -75,17 +75,15 @@ export const LearningSubtopicsApi = {
     await axiosInstance.delete(ENDPOINTS.LEARNING_SUBTOPIC_DETAIL(subtopicId));
   },
 
-  getTopics: async (
-    params: { limit?: number; offset?: number } = {}
-  ): Promise<PaginatedTopicsResponse> => {
-    const query = buildQueryString(params);
-    const response = await axiosInstance.get<LearningTopicOptionForSelect[]>( // API для тем тоже может не возвращать total
-      `${ENDPOINTS.LEARNING_TOPICS_LIST}${query}`
+  getTopics: async (): Promise<PaginatedTopicsResponse> => { 
+    // Убрали params, так как API /v1/admin/topics/ судя по всему не принимает limit/offset 
+    // или принимает их некорректно, вызывая 422
+    const response = await axiosInstance.get<LearningTopicOptionForSelect[]>(
+      ENDPOINTS.LEARNING_TOPICS_LIST // Отправляем без query параметров
     );
-    console.log("API response for getTopics:", response.data);
     return {
       items: response.data,
-      total: response.data.length, // Предполагаем, что API для тем тоже не возвращает total
+      total: response.data.length, // API для тем, вероятно, тоже не возвращает total
     };
   },
 };

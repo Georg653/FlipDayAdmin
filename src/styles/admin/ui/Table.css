@@ -110,3 +110,45 @@
 .table-pagination-wrapper {
     padding: 0 1rem 1rem 1rem; /* Отступы для обертки пагинации */
 }
+
+
+/* ... твои существующие стили для Table.css ... */
+
+.status-badge {
+  padding: 0.2em 0.6em;
+  border-radius: 0.25rem;
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: capitalize;
+  display: inline-block; /* Чтобы padding работал корректно */
+}
+
+.status-pending {
+  background-color: #fff3cd; /* Светло-желтый */
+  color: #856404; /* Темно-желтый */
+  border: 1px solid #ffeeba;
+}
+
+.status-approved {
+  background-color: #d4edda; /* Светло-зеленый */
+  color: #155724; /* Темно-зеленый */
+  border: 1px solid #c3e6cb;
+}
+
+.status-needed_feedback {
+  background-color: #d1ecf1; /* Светло-голубой */
+  color: #0c5460; /* Темно-голубой */
+  border: 1px solid #bee5eb;
+}
+
+.status-finished {
+  background-color: #e2e3e5; /* Светло-серый */
+  color: #383d41; /* Темно-серый */
+  border: 1px solid #d6d8db;
+}
+
+.status-canceled {
+  background-color: #f8d7da; /* Светло-красный */
+  color: #721c24; /* Темно-красный */
+  border: 1px solid #f5c6cb;
+}

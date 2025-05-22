@@ -30,10 +30,10 @@ export const useLearningSubtopicForm = (options: LearningSubtopicFormOptions) =>
       let currentTopicId = "";
       if (options.topicIdForCreate && learningSubtopicToEdit) {
           currentTopicId = options.topicIdForCreate.toString();
-      } else if (formData.topic_id) {
+      } else if (formData.topic_id && formData.topic_id !== initialLearningSubtopicFormData.topic_id) {
         currentTopicId = formData.topic_id;
       } else {
-        currentTopicId = learningSubtopicToEdit.topic_id.toString(); // Берем из редактируемого объекта
+        currentTopicId = learningSubtopicToEdit.topic_id.toString();
       }
 
       setFormData({
@@ -48,12 +48,13 @@ export const useLearningSubtopicForm = (options: LearningSubtopicFormOptions) =>
       });
       setFormError(null);
     } else {
-      setFormData(prev => ({
+       setFormData(prev => ({
         ...initialLearningSubtopicFormData,
         topic_id: topicIdForCreate?.toString() || prev.topic_id || "",
       }));
     }
-  }, [learningSubtopicToEdit, resetForm, topicIdForCreate, options.topicIdForCreate, formData.topic_id]);
+  }, [learningSubtopicToEdit, options.topicIdForCreate]);
+
 
   const handleChange = ( e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
@@ -78,10 +79,8 @@ export const useLearningSubtopicForm = (options: LearningSubtopicFormOptions) =>
 
     if (!formData.topic_id.trim() || !formData.name.trim() || !formData.experience_points.trim() || !formData.order.trim()) {
       setFormError('ID Темы, Название, Очки опыта и Порядок обязательны.');
-      setIsSubmitting(false);
-      return;
+      setIsSubmitting(false); return;
     }
-
     const topicIdNum = parseInt(formData.topic_id, 10);
     const experiencePointsNum = parseInt(formData.experience_points, 10);
     const orderNum = parseInt(formData.order, 10);
@@ -110,51 +109,29 @@ export const useLearningSubtopicForm = (options: LearningSubtopicFormOptions) =>
       if (isEditing && learningSubtopicToEdit) {
         const updatePayload: LearningSubtopicUpdatePayload = {};
         let hasChanges = false;
-
         if (formData.name.trim() !== learningSubtopicToEdit.name) { updatePayload.name = formData.name.trim(); hasChanges = true; }
         if (formData.description.trim() !== (learningSubtopicToEdit.description || "")) { updatePayload.description = formData.description.trim() || null; hasChanges = true; }
         if (experiencePointsNum !== learningSubtopicToEdit.experience_points) { updatePayload.experience_points = experiencePointsNum; hasChanges = true; }
         if (orderNum !== learningSubtopicToEdit.order) { updatePayload.order = orderNum; hasChanges = true; }
         if (formData.image_file) { hasChanges = true; }
 
-
         if (!hasChanges) {
-          console.log('Нет изменений для сохранения.');
-          setIsSubmitting(false);
-          onSuccess?.(learningSubtopicToEdit);
-          return;
+          setIsSubmitting(false); onSuccess?.(learningSubtopicToEdit); return;
         }
-        
-        result = await LearningSubtopicsApi.updateLearningSubtopic(
-          learningSubtopicToEdit.id,
-          updatePayload,
-          formData.image_file
-        );
-        console.log('Подтема успешно обновлена!');
+        result = await LearningSubtopicsApi.updateLearningSubtopic(learningSubtopicToEdit.id, updatePayload, formData.image_file);
       } else {
-        result = await LearningSubtopicsApi.createLearningSubtopic(
-          topicIdNum,
-          payloadData,
-          formData.image_file
-        );
-        console.log('Подтема успешно создана!');
+        result = await LearningSubtopicsApi.createLearningSubtopic(topicIdNum, payloadData, formData.image_file);
       }
       onSuccess?.(result);
     } catch (error: any) {
-      console.error("Ошибка сохранения подтемы:", error);
       const message = error.response?.data?.detail || `Не удалось ${learningSubtopicToEdit ? 'обновить' : 'создать'} подтему.`;
       let errorMessage = "Произошла неизвестная ошибка.";
-      if (typeof message === 'string') {
-        errorMessage = message;
-      } else if (Array.isArray(message)) {
-        errorMessage = message.map(err => `${err.loc?.join(' -> ') || 'поле'} - ${err.msg}`).join('; ');
-      }
-      console.error(errorMessage);
+      if (typeof message === 'string') { errorMessage = message; }
+      else if (Array.isArray(message)) { errorMessage = message.map(err => `${err.loc?.join(' -> ') || 'поле'} - ${err.msg}`).join('; '); }
       setFormError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
-
   return { formData, setFormData, handleChange, handleFileChange, handleSubmit, isSubmitting, formError, resetForm };
 };

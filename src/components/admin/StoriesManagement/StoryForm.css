@@ -1,0 +1,46 @@
+/* src/components/admin/StoriesManagement/StoryForm.css */
+
+.content-items-fieldset {
+  border: 1px solid var(--admin-border-color, #e0e0e0);
+  padding: 1rem;
+  border-radius: 0.375rem; /* 6px */
+  margin-top: 1rem;
+}
+
+.content-items-fieldset legend {
+  padding: 0 0.5rem;
+  font-weight: 500;
+  color: var(--admin-text-dark, #333);
+}
+
+.content-item-block {
+  border: 1px dashed var(--admin-border-color, #e0e0e0);
+  padding: 1rem;
+  margin-bottom: 1rem;
+  border-radius: 0.25rem; /* 4px */
+  background-color: #fdfdff; /* Чуть светлее фона формы */
+}
+
+.content-item-block h4 {
+  margin-top: 0;
+  margin-bottom: 0.75rem;
+  font-size: 1rem;
+  font-weight: 600;
+}
+
+.remove-content-item-button {
+  margin-top: 0.5rem;
+  /* Выравнивание, если нужно */
+  /* display: block; */
+  /* margin-left: auto; */
+}
+
+.add-content-item-button {
+  margin-top: 1rem;
+}
+
+.form-field-error {
+    font-size: 0.8rem;
+    color: #dc2626; /* red-600 */
+    margin-top: 0.25rem;
+}

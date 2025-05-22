@@ -17,16 +17,17 @@ export const LearningSubtopicsTable: React.FC<LearningSubtopicsTableProps> = ({
   handlePreviousPage,
   handleNextPage,
 }) => {
+  // Сначала проверяем на ошибку, так как она может быть важнее, чем isLoading или пустой массив
+  if (error) {
+    return <div className="table-status-message table-status-error">Ошибка: {typeof error === 'string' ? error : JSON.stringify(error)}</div>;
+  }
+
   if (isLoading && (!Array.isArray(learningSubtopics) || learningSubtopics.length === 0)) {
     return <div className="table-status-message table-status-loading">Загрузка подтем...</div>;
   }
 
-  if (error) {
-    return <div className="table-status-message table-status-error">Ошибка: {error}</div>;
-  }
-
   if (!isLoading && (!Array.isArray(learningSubtopics) || learningSubtopics.length === 0)) {
-    return <div className="table-status-message table-status-empty">Подтемы не найдены для выбранной темы.</div>;
+    return <div className="table-status-message table-status-empty">Подтемы не найдены для выбранной темы или темы не загружены.</div>;
   }
 
   return (
@@ -58,7 +59,7 @@ export const LearningSubtopicsTable: React.FC<LearningSubtopicsTableProps> = ({
                 </td>
                 <td className="table-body-cell">{subtopic.name}</td>
                 <td className="table-body-cell table-cell-description">
-                  {subtopic.description && subtopic.description.length > 50
+                  {(subtopic.description && subtopic.description.length > 50)
                     ? `${subtopic.description.substring(0, 50)}...`
                     : subtopic.description || '—'}
                 </td>
@@ -92,7 +93,7 @@ export const LearningSubtopicsTable: React.FC<LearningSubtopicsTableProps> = ({
         </table>
       </div>
 
-      {totalItems > 0 && (
+      {totalItems > 0 && Array.isArray(learningSubtopics) && learningSubtopics.length > 0 && (
         <div className="table-pagination-wrapper">
           <Pagination
             currentPage={currentPage}

@@ -1,0 +1,26 @@
+/* src/components/ui/Checkbox/Checkbox.css */
+.checkbox-wrapper {
+  display: inline-flex;
+  align-items: center;
+}
+.checkbox-input {
+  width: 1rem; /* 16px */
+  height: 1rem; /* 16px */
+  margin-right: 0.5rem; /* 8px */
+  border-radius: 0.25rem; /* 4px */
+  border: 1px solid var(--admin-border-color, #ced4da);
+  cursor: pointer;
+}
+.checkbox-input:checked {
+  background-color: var(--admin-primary-color, #007bff);
+  border-color: var(--admin-primary-color, #007bff);
+}
+.checkbox-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.6;
+}
+.checkbox-label {
+  font-size: 0.875rem;
+  color: var(--admin-text-dark, #333);
+  cursor: pointer;
+}
