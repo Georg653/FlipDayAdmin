@@ -1,4 +1,4 @@
-// src/hooks/admin/LearningTopicsManagement/useLearningTopicForm.ts
+// src/hooks/admin/LearningTopics/useLearningTopicForm.ts
 import { useState, useEffect, useCallback } from 'react';
 import type {
   LearningTopic,
@@ -6,23 +6,38 @@ import type {
   LearningTopicUpdatePayload,
   LearningTopicFormData,
   LearningTopicFormOptions,
-} from '../../../types/admin/LearningTopics/learningTopic.types';
-import { initialLearningTopicFormData } from '../../../types/admin/LearningTopics/learningTopic.types';
+} from '../../../types/admin/LearningTopics/learningTopic.types'; // Убедись, что типы обновлены
+import { initialLearningTopicFormData } from '../../../types/admin/LearningTopics/learningTopic.types'; // Убедись, что обновлен
 import { LearningTopicsApi } from '../../../services/admin/LearningTopics/learningTopicsApi';
+// import { useNotification } from '../../../contexts/admin/NotificationContext'; // Если используешь
 
 export const useLearningTopicForm = (options: LearningTopicFormOptions) => {
   const { onSuccess, learningTopicToEdit } = options;
+  // const { showNotification } = useNotification();
 
   const [formData, setFormData] = useState<LearningTopicFormData>(initialLearningTopicFormData);
   const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const resetForm = useCallback(() => {
-    setFormData(initialLearningTopicFormData);
-    setFormError(null);
+  const revokePreviewUrl = useCallback((url: string | null | undefined) => {
+    if (url && url.startsWith('blob:')) {
+      URL.revokeObjectURL(url);
+    }
   }, []);
 
+  const resetForm = useCallback(() => {
+    revokePreviewUrl(formData.image_preview_url);
+    setFormData(initialLearningTopicFormData);
+    setFormError(null);
+  }, [formData.image_preview_url, revokePreviewUrl]);
+
   useEffect(() => {
+    // Освобождаем URL от предыдущего состояния перед установкой нового
+    // Это нужно, если learningTopicToEdit меняется несколько раз без размонтирования компонента
+    if (formData.image_preview_url && formData.image_preview_url.startsWith('blob:')) {
+        revokePreviewUrl(formData.image_preview_url);
+    }
+
     if (learningTopicToEdit) {
       setFormData({
         name: learningTopicToEdit.name,
@@ -30,30 +45,72 @@ export const useLearningTopicForm = (options: LearningTopicFormOptions) => {
         experience_points: learningTopicToEdit.experience_points.toString(),
         order: learningTopicToEdit.order.toString(),
         image_file: null,
-        image_preview_url: learningTopicToEdit.image,
+        image_url_manual: learningTopicToEdit.image || "", 
+        image_preview_url: learningTopicToEdit.image, 
         existing_image_url: learningTopicToEdit.image,
       });
       setFormError(null);
     } else {
-      resetForm();
+      setFormData(initialLearningTopicFormData); // При создании просто сбрасываем на initial
     }
-  }, [learningTopicToEdit, resetForm]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps 
+  }, [learningTopicToEdit]); // Убрал resetForm, чтобы избежать лишних вызовов и зависимостей
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
+
+    setFormData(prev => {
+      const newValues = { ...prev, [name]: value };
+
+      if (name === 'image_url_manual') {
+        if (prev.image_preview_url && prev.image_preview_url.startsWith('blob:')) {
+          revokePreviewUrl(prev.image_preview_url);
+        }
+        newValues.image_file = null;
+        if (value.trim().toLowerCase().startsWith('http')) {
+            newValues.image_preview_url = value.trim();
+        } else {
+            newValues.image_preview_url = prev.existing_image_url || null;
+        }
+      }
+      return newValues;
+    });
+
     if (formError) setFormError(null);
   };
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    setFormData((prev) => ({
-      ...prev,
-      image_file: file,
-      image_preview_url: file ? URL.createObjectURL(file) : prev.existing_image_url,
-    }));
+    
+    setFormData(prev => {
+      if (prev.image_preview_url && prev.image_preview_url.startsWith('blob:')) {
+        revokePreviewUrl(prev.image_preview_url);
+      }
+      
+      let newPreviewUrl: string | null = null;
+      if (file) {
+        newPreviewUrl = URL.createObjectURL(file);
+      } else {
+        newPreviewUrl = prev.existing_image_url || null; // Если отменили выбор файла, вернем existing
+      }
+
+      return {
+        ...prev,
+        image_file: file,
+        image_preview_url: newPreviewUrl,
+        image_url_manual: "", 
+      };
+    });
     if (formError) setFormError(null);
   };
+
+  // Гарантируем освобождение URL при размонтировании компонента, использующего хук
+  useEffect(() => {
+    const currentPreview = formData.image_preview_url;
+    return () => {
+      revokePreviewUrl(currentPreview);
+    };
+  }, [formData.image_preview_url, revokePreviewUrl]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -74,13 +131,27 @@ export const useLearningTopicForm = (options: LearningTopicFormOptions) => {
       setFormError('Порядок должен быть неотрицательным числом.'); setIsSubmitting(false); return;
     }
 
-    const payloadData: LearningTopicCreatePayload = {
+    const basePayloadData = {
       name: formData.name.trim(),
       description: formData.description.trim() || null,
       experience_points: experiencePointsNum,
       order: orderNum,
     };
 
+    let imageFileToSend: File | null = formData.image_file;
+    let imageUrlForApi: string | null | undefined = undefined;
+
+    if (formData.image_file) {
+      // Файл имеет приоритет, URL для API будет null (или его не будет, бэк сам разберется)
+      imageUrlForApi = null; 
+    } else if (formData.image_url_manual.trim()) {
+      imageUrlForApi = formData.image_url_manual.trim();
+    } else {
+      // Ни файла, ни нового URL. Если редактируем и было изображение, его нужно сохранить.
+      // Если создаем, то изображения не будет (null).
+      imageUrlForApi = learningTopicToEdit ? learningTopicToEdit.image : null;
+    }
+    
     try {
       let result: LearningTopic;
       const isEditing = !!learningTopicToEdit;
@@ -88,26 +159,54 @@ export const useLearningTopicForm = (options: LearningTopicFormOptions) => {
       if (isEditing && learningTopicToEdit) {
         const updatePayload: LearningTopicUpdatePayload = {};
         let hasChanges = false;
-        if (formData.name.trim() !== learningTopicToEdit.name) { updatePayload.name = formData.name.trim(); hasChanges = true; }
-        if (formData.description.trim() !== (learningTopicToEdit.description || "")) { updatePayload.description = formData.description.trim() || null; hasChanges = true; }
-        if (experiencePointsNum !== learningTopicToEdit.experience_points) { updatePayload.experience_points = experiencePointsNum; hasChanges = true; }
-        if (orderNum !== learningTopicToEdit.order) { updatePayload.order = orderNum; hasChanges = true; }
-        if (formData.image_file) { hasChanges = true; }
 
-        if (!hasChanges) {
-          setIsSubmitting(false); onSuccess?.(learningTopicToEdit); return;
+        if (basePayloadData.name !== learningTopicToEdit.name) { updatePayload.name = basePayloadData.name; hasChanges = true; }
+        if (basePayloadData.description !== (learningTopicToEdit.description || null)) { updatePayload.description = basePayloadData.description; hasChanges = true; }
+        if (basePayloadData.experience_points !== learningTopicToEdit.experience_points) { updatePayload.experience_points = basePayloadData.experience_points; hasChanges = true; }
+        if (basePayloadData.order !== learningTopicToEdit.order) { updatePayload.order = basePayloadData.order; hasChanges = true; }
+        
+        // Логика для изображения при редактировании
+        if (imageFileToSend) { // Новый файл выбран
+          updatePayload.image_url = null; // Бэк будет использовать файл
+          hasChanges = true;
+        } else {
+          // Файл не выбран. Проверяем, изменился ли URL или был ли он удален
+          const currentApiImage = learningTopicToEdit.image || null;
+          const newManualUrl = formData.image_url_manual.trim() || null;
+          if (newManualUrl !== currentApiImage) {
+            updatePayload.image_url = newManualUrl;
+            hasChanges = true;
+          }
+          // Если newManualUrl === currentApiImage, значит URL не менялся, и поле image_url не добавляем в payload
         }
-        result = await LearningTopicsApi.updateLearningTopic(learningTopicToEdit.id, updatePayload, formData.image_file);
-      } else {
-        result = await LearningTopicsApi.createLearningTopic(payloadData, formData.image_file);
+
+        console.log("Отправляемый updatePayload (редактирование):", updatePayload);
+        console.log("Отправляемый файл (редактирование):", imageFileToSend);
+
+        if (!hasChanges && !imageFileToSend) {
+          console.log('Нет изменений для сохранения.');
+          setIsSubmitting(false);
+          onSuccess?.(learningTopicToEdit); 
+          return;
+        }
+        result = await LearningTopicsApi.updateLearningTopic(learningTopicToEdit.id, updatePayload, imageFileToSend);
+      } else { // Создание
+        const createPayload: LearningTopicCreatePayload = {
+            ...basePayloadData,
+            image_url: imageUrlForApi, 
+        };
+        console.log("Отправляемый createPayload (создание):", createPayload);
+        console.log("Отправляемый файл (создание):", imageFileToSend);
+        result = await LearningTopicsApi.createLearningTopic(createPayload, imageFileToSend);
       }
       onSuccess?.(result);
     } catch (error: any) {
       const message = error.response?.data?.detail || `Не удалось ${learningTopicToEdit ? 'обновить' : 'создать'} тему.`;
       let errorMessage = "Произошла ошибка.";
       if (typeof message === 'string') {errorMessage = message;}
-      else if (Array.isArray(message)) {errorMessage = message.map(err => `${err.loc?.join(' -> ') || 'поле'} - ${err.msg}`).join('; ');}
+      else if (Array.isArray(message) && message.length > 0 && typeof message[0] === 'object' && message[0].msg) {errorMessage = message.map(err => `${err.loc?.join(' -> ') || 'поле'} - ${err.msg}`).join('; ');}
       setFormError(errorMessage);
+      console.error("API Error:", error.response?.data || error.message); // Добавил более детальный лог ошибки
     } finally {
       setIsSubmitting(false);
     }

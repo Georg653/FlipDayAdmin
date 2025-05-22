@@ -6,11 +6,11 @@ export interface LearningTopic {
   name: string;
   description: string | null;
   experience_points: number;
-  image: string | null; // URL изображения
+  image: string | null; // URL изображения (может быть как внутренним, так и внешним, если API поддерживает)
   order: number;
-  // Поле completion_percentage было в документации API ответа, добавим его
-  completion_percentage?: number; // Опционально, т.к. не во всех контекстах оно может быть
-  // created_at, updated_at - если API их возвращает, добавь
+  completion_percentage?: number;
+  created_at?: string; // Добавим, если API возвращает
+  updated_at?: string; // Добавим, если API возвращает
 }
 
 // Данные для JSON-строки в поле 'data_json' при создании Темы
@@ -19,21 +19,28 @@ export interface LearningTopicCreatePayload {
   description?: string | null;
   experience_points: number;
   order: number;
-  // image не передается в data_json, а как image_file
+  image_url?: string | null; // <<<--- НОВОЕ ПОЛЕ: для передачи URL изображения, если не загружается файл
+                             // Название 'image_url' выбрано для ясности, что это URL.
+                             // Бэкенд должен его обработать (скачать или сохранить как есть).
 }
 
 // Данные для JSON-строки в поле 'data_json' при обновлении Темы
 export type LearningTopicUpdatePayload = Partial<LearningTopicCreatePayload>;
+// image_url также будет опциональным и может использоваться для обновления/удаления ссылки на изображение.
+
 
 // Структура данных для формы создания/редактирования Темы
 export interface LearningTopicFormData {
   name: string;
   description: string;
-  experience_points: string; // В форме строка
-  order: string;             // В форме строка
-  image_file: File | null;
-  image_preview_url?: string | null;
-  existing_image_url?: string | null;
+  experience_points: string;
+  order: string;
+  
+  image_file: File | null;            // Для загрузки файла
+  image_url_manual: string;         // <<<--- НОВОЕ ПОЛЕ: для ввода URL вручную
+
+  image_preview_url?: string | null; // Для отображения превью в ImageUpload (из файла или URL)
+  existing_image_url?: string | null;// Для отображения существующей картинки при редактировании
 }
 
 // Начальное состояние для данных формы LearningTopic
@@ -43,6 +50,7 @@ export const initialLearningTopicFormData: LearningTopicFormData = {
   experience_points: "0",
   order: "0",
   image_file: null,
+  image_url_manual: "", // <<<--- НОВОЕ ПОЛЕ: инициализируем пустой строкой
   image_preview_url: null,
   existing_image_url: null,
 };
@@ -54,10 +62,9 @@ export interface LearningTopicFormOptions {
 }
 
 // Ответ API на запрос списка Тем
-// (Предполагаем, что API для списка тем тоже может не возвращать total)
 export interface PaginatedLearningTopicsResponse {
   items: LearningTopic[];
-  total: number; // Может не быть от API
+  total: number; 
   limit?: number;
   offset?: number;
 }
@@ -66,10 +73,10 @@ export interface PaginatedLearningTopicsResponse {
 export interface LearningTopicFilterParams {
   limit?: number;
   offset?: number;
-  name?: string; // Возможный фильтр
+  name?: string;
 }
 
-// Тип для опций селекта (используется в LearningSubtopics для выбора Topic)
+// Тип для опций селекта
 export interface TopicOption {
   id: number;
   name: string;
