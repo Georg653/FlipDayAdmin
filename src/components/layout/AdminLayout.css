@@ -1,21 +1,22 @@
 /* src/components/layout/AdminLayout.css */
 .admin-layout {
   display: flex;
-  min-height: 100vh; /* Занимает всю высоту */
-  background-color: transparent; /* Фон будет от body (градиент) */
+  min-height: 100vh;
+  background-color: transparent;
 }
 
 .admin-sidebar {
-  width: 260px;
-  background-color: rgba(255, 255, 255, 0.85); /* Белый с небольшой прозрачностью, чтобы градиент просвечивал */
-  backdrop-filter: blur(10px); /* Эффект размытия для "стеклянного" вида */
+  width: 270px;
+  background-color: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(10px);
   -webkit-backdrop-filter: blur(10px);
   border-right: 1px solid var(--admin-border-color, #e0e0e0);
   display: flex;
-  flex-direction: column;
-  padding: 1.5rem 1rem;
+  flex-direction: column; /* Это важно для распределения пространства */
+  /* Убираем padding сверху и снизу, чтобы nav мог занять доступное пространство */
+  padding: 0 1rem; 
   box-shadow: 2px 0 10px rgba(0, 0, 0, 0.05);
-  position: fixed; /* Фиксированный сайдбар */
+  position: fixed;
   left: 0;
   top: 0;
   bottom: 0;
@@ -23,9 +24,10 @@
 }
 
 .admin-sidebar-header {
-  margin-bottom: 2rem;
-  padding-bottom: 1rem;
+  margin-bottom: 1rem; /* Уменьшил отступ, т.к. общий padding убран */
+  padding: 1.5rem 0 1rem 0; /* Добавил padding сюда */
   border-bottom: 1px solid var(--admin-border-color, #e9ecef);
+  flex-shrink: 0; /* Заголовок не должен сжиматься */
 }
 
 .admin-sidebar-header h3 {
@@ -34,6 +36,32 @@
   color: var(--admin-text-dark, #333);
   text-align: center;
 }
+
+.admin-nav {
+  flex-grow: 1; /* Навигация занимает все доступное пространство */
+  overflow-y: auto; /* Добавляем вертикальную прокрутку, если контент не помещается */
+  /* Можно добавить небольшой отступ снизу, если список прилипает к футеру */
+  margin-bottom: 1rem; 
+  /* Стили для скрытия стандартного скроллбара и кастомизации (опционально) */
+  scrollbar-width: thin; /* Firefox */
+  scrollbar-color: var(--admin-primary-color, #6a11cb) rgba(0,0,0,0.05); /* Firefox */
+}
+/* Для Webkit-браузеров (Chrome, Safari, Edge) */
+.admin-nav::-webkit-scrollbar {
+  width: 6px; /* Ширина скроллбара */
+}
+.admin-nav::-webkit-scrollbar-track {
+  background: rgba(0,0,0,0.05); /* Цвет трека */
+  border-radius: 3px;
+}
+.admin-nav::-webkit-scrollbar-thumb {
+  background-color: var(--admin-primary-color, #6a11cb); /* Цвет ползунка */
+  border-radius: 3px;
+}
+.admin-nav::-webkit-scrollbar-thumb:hover {
+  background-color: var(--admin-secondary-color, #555); /* Цвет ползунка при наведении */
+}
+
 
 .admin-nav ul {
   list-style: none;
@@ -45,7 +73,7 @@
   display: block;
   padding: 0.8rem 1rem;
   margin-bottom: 0.5rem;
-  border-radius: 0.375rem; /* 6px */
+  border-radius: 0.375rem;
   text-decoration: none;
   color: var(--admin-text-light, #555);
   font-weight: 500;
@@ -53,7 +81,7 @@
 }
 
 .admin-nav-link:hover {
-  background-color: rgba(106, 17, 203, 0.1); /* Слабый фон основного цвета при наведении */
+  background-color: rgba(106, 17, 203, 0.1);
   color: var(--admin-primary-color, #6a11cb);
 }
 
@@ -64,30 +92,52 @@
   box-shadow: 0 2px 8px rgba(106, 17, 203, 0.3);
 }
 
+.nav-group-header {
+  padding: 1rem 1rem 0.5rem 1rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: #888;
+  text-transform: uppercase;
+  margin-top: 1rem;
+}
+.admin-nav ul li:first-child .nav-group-header {
+    margin-top: 0;
+}
+
+
 .admin-sidebar-footer {
-  margin-top: auto; /* Прижимает футер к низу */
-  padding-top: 1rem;
+  margin-top: auto; /* Это свойство больше не нужно, так как nav занимает все пространство */
+  padding: 1rem 0 1.5rem 0; /* Добавил padding сюда */
   border-top: 1px solid var(--admin-border-color, #e9ecef);
   text-align: center;
+  flex-shrink: 0; /* Футер не должен сжиматься */
 }
 
 .admin-main-content {
   flex-grow: 1;
-  padding: 0; /* Отступы будут задаваться в .page-container конкретных страниц */
-  margin-left: 260px; /* Отступ слева, равный ширине сайдбара */
-  background-color: transparent; /* Чтобы был виден градиент body */
-  overflow-y: auto; /* Если контент длинный */
+  padding: 0;
+  margin-left: 260px;
+  background-color: transparent;
+  overflow-y: auto;
 }
 
-/* Адаптивность для маленьких экранов (очень базовая) */
+/* Адаптивность */
 @media (max-width: 768px) {
   .admin-sidebar {
-    /* Можно сделать его скрытым и открывающимся по кнопке */
     width: 100%;
     height: auto;
     position: static;
     border-right: none;
     border-bottom: 1px solid var(--admin-border-color, #e0e0e0);
+    padding: 0 1rem; /* Восстанавливаем padding для мобильного вида */
+  }
+  .admin-nav {
+    overflow-y: visible; /* Убираем скролл для мобильного меню, если оно не фиксировано */
+    margin-bottom: 0; /* Убираем отступ, если он не нужен для мобильного */
+  }
+  .admin-sidebar-header, .admin-sidebar-footer {
+      padding-left: 0; /* Убираем лишние отступы, если основной padding на .admin-sidebar */
+      padding-right: 0;
   }
   .admin-main-content {
     margin-left: 0;
@@ -95,19 +145,4 @@
   .admin-layout {
     flex-direction: column;
   }
-}
-
-/* В src/components/layout/AdminLayout.css */
-/* ... другие стили ... */
-
-.nav-group-header {
-  padding: 1rem 1rem 0.5rem 1rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  color: #888; /* Или другой цвет для разделителя */
-  text-transform: uppercase;
-  margin-top: 1rem; /* Отступ перед группой */
-}
-.admin-nav ul li:first-child .nav-group-header { /* Убрать верхний отступ у самого первого заголовка группы, если он первый элемент */
-    margin-top: 0;
 }

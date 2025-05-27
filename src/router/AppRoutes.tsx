@@ -33,7 +33,7 @@ const AppRoutes: React.FC = () => {
           <Route path="route-categories" element={<RouteCategoriesPage />} />
           <Route path="points" element={<PointsPage />} />
           <Route path="routes" element={<RoutesPage />} /> {/* Этот роут уже должен работать */}
-          <Route path="learning-topics" element={<LearningTopicsPage />} />
+          <Route path="topics" element={<LearningTopicsPage />} />
           <Route path="learning-subtopics" element={<LearningSubtopicsPage />} />
           <Route path="learning-pages" element={<LearningPagesPage />} />
           <Route index element={<Navigate to="proposals" replace />} /> 

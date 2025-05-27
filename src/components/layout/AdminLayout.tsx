@@ -74,7 +74,7 @@ const AdminLayout: React.FC = () => {
             <li className="nav-group-header">Обучение</li>
             <li>
               <NavLink 
-                to="/admin/learning-topics" 
+                to="/admin/topics" 
                 className={({ isActive }) => isActive ? "admin-nav-link active" : "admin-nav-link"}
               >
                 Темы
