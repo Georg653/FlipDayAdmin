@@ -1,40 +1,38 @@
-// src/types/admin/LearningPages/learningPage_props.types.ts
-import type React from 'react';
-import type {
-  LearningPage,
-  LearningPageFormData,
-  SubtopicOption,
-  LearningPageFormOptions, // Импортируем для использования в компоненте формы
-} from './learningPage.types';
+// --- Путь: src/types/admin/LearningPages/learningPage_props.types.ts ---
 
-// Пропсы для компонента LearningPageForm.tsx
-// Он будет принимать опции для своего внутреннего хука useLearningPageForm
-// и функцию для управления своей видимостью.
-export interface LearningPageFormProps extends LearningPageFormOptions {
-  setShowForm: (show: boolean) => void;
-  // subtopicOptions?: SubtopicOption[]; // Если селект подтем будет рендериться в форме
+import type { LearningPage } from './learningPage.types';
+import type { TopicOption, SubtopicOption } from './learningPage.types';
+
+export interface LearningPagesTableProps {
+  pages: LearningPage[];
+  isLoading: boolean;
+  error: string | null;
+  onEdit: (page: LearningPage) => void;
+  onDelete: (id: number) => void;
+  currentPage: number;
+  canGoNext: boolean;
+  canGoPrevious: boolean;
+  handleNextPage: () => void;
+  handlePreviousPage: () => void;
 }
 
-// Пропсы для компонента LearningPagesHeader.tsx
 export interface LearningPagesHeaderProps {
   isLoading: boolean;
   onShowForm: () => void;
-  currentSubtopicIdInput: string;
-  onSubtopicIdChange: (value: string) => void;
-  subtopicOptions?: SubtopicOption[];
-  loadingSubtopics?: boolean;
+  // Селекторы для тем и подтем
+  topics: TopicOption[];
+  subtopics: SubtopicOption[];
+  selectedTopicId: string | null;
+  selectedSubtopicId: string | null;
+  onTopicChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  onSubtopicChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  isAddButtonDisabled: boolean;
 }
 
-// Пропсы для компонента LearningPagesTable.tsx
-export interface LearningPagesTableProps {
-  learningPages: LearningPage[];
-  isLoading: boolean;
-  error: string | null;
-  onEdit: (learningPage: LearningPage) => void;
-  onDelete: (id: number) => void;
-  currentPage: number;
-  totalItems: number;
-  itemsPerPage: number;
-  handlePreviousPage: () => void;
-  handleNextPage: () => void;
+export interface LearningPageFormProps {
+  pageToEdit: LearningPage | null;
+  onSuccess: (page: LearningPage) => void;
+  onCancel: () => void;
+  // ID родительской подтемы для создания новой страницы
+  parentSubtopicId: number | null;
 }

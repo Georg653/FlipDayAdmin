@@ -1,89 +1,149 @@
-// src/services/admin/LearningSubtopics/learningSubtopicsApi.ts
+// --- Путь: src/services/admin/LearningSubtopics/learningSubtopicsApi.ts ---
+// ПОЛНАЯ ПЕРЕПИСАННАЯ ВЕРСИЯ
+
 import axiosInstance from '../api/axios';
 import { ENDPOINTS } from '../api/endpoints';
 import { buildQueryString } from '../api/buildQuery';
+
 import type {
   LearningSubtopic,
+  LearningSubtopicFilterParams,
   LearningSubtopicCreatePayload,
   LearningSubtopicUpdatePayload,
-  PaginatedLearningSubtopicsResponse,
-  LearningSubtopicFilterParams,
 } from '../../../types/admin/LearningSubtopics/learningSubtopic.types';
-import type { TopicOption as LearningTopicOptionForSelect } from '../../../types/admin/LearningTopics/learningTopic.types';
-
-interface PaginatedTopicsResponse {
-  items: LearningTopicOptionForSelect[];
-  total: number;
-}
+// Мы также работаем с темами, поэтому импортируем и их тип
+import type { LearningTopic } from '../../../types/admin/LearningTopics/learningTopic.types';
 
 export const LearningSubtopicsApi = {
-  getLearningSubtopicsForTopic: async (
+  // =======================================================================
+  // === ОСНОВНЫЕ МЕТОДЫ ДЛЯ РАБОТЫ С ПОДТЕМАМИ (SUBTOPICS) ===
+  // =======================================================================
+
+  /**
+   * Получение списка подтем для КОНКРЕТНОЙ темы с пагинацией.
+   * Этот метод требует ID родительской темы.
+   * @param topicId - ID родительской темы.
+   * @param params - Параметры пагинации (limit, offset).
+   */
+  getSubtopicsByTopicId: async (
     topicId: number,
     params: LearningSubtopicFilterParams = {}
-  ): Promise<PaginatedLearningSubtopicsResponse> => {
-    const query = buildQueryString({ limit: params.limit, offset: params.offset });
-    const response = await axiosInstance.get<LearningSubtopic[]>(
-      `${ENDPOINTS.LEARNING_SUBTOPICS_BY_TOPIC(topicId)}${query}`
+  ): Promise<LearningSubtopic[]> => {
+    // ЗАЩИТА: Убедимся, что topicId валидный, прежде чем делать запрос.
+    if (!topicId || typeof topicId !== 'number' || isNaN(topicId)) {
+      console.error(
+        'API_ERROR: Попытка запросить подтемы с неверным topicId:',
+        topicId
+      );
+      // Возвращаем пустой массив, чтобы избежать ошибки 422 на бэкенде.
+      return [];
+    }
+
+    const query = buildQueryString(params);
+    const url = `${ENDPOINTS.LEARNING_SUBTOPICS_BY_TOPIC(topicId)}${query}`;
+
+    const response = await axiosInstance.get<LearningSubtopic[]>(url);
+
+    // Дополнительная проверка, чтобы всегда возвращать массив
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
+  /**
+   * Получение одной конкретной подтемы по ее уникальному ID.
+   * @param subtopicId - ID подтемы.
+   */
+  getSubtopicById: async (subtopicId: number): Promise<LearningSubtopic> => {
+    const response = await axiosInstance.get<LearningSubtopic>(
+      ENDPOINTS.LEARNING_SUBTOPIC_DETAIL(subtopicId)
     );
-    return {
-      items: response.data,
-      total: response.data.length,
-      limit: params.limit,
-      offset: params.offset,
-    };
+    return response.data;
   },
 
-  getLearningSubtopicById: async (subtopicId: number): Promise<LearningSubtopic> => {
-    return (await axiosInstance.get<LearningSubtopic>(ENDPOINTS.LEARNING_SUBTOPIC_DETAIL(subtopicId))).data;
-  },
-
-  createLearningSubtopic: async (
-    topicId: number,
-    payload: LearningSubtopicCreatePayload,
-    imageFile?: File | null
-  ): Promise<LearningSubtopic> => {
-    const formData = new FormData();
-    formData.append('data_json', JSON.stringify(payload));
-    if (imageFile) {
-      formData.append('image_file', imageFile);
-    }
-    return (await axiosInstance.post<LearningSubtopic>(
-      ENDPOINTS.LEARNING_SUBTOPICS_BY_TOPIC(topicId),
-      formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
-    )).data;
-  },
-
-  updateLearningSubtopic: async (
-    subtopicId: number,
-    payload: LearningSubtopicUpdatePayload,
-    imageFile?: File | null
-  ): Promise<LearningSubtopic> => {
-    const formData = new FormData();
-    formData.append('data_json', JSON.stringify(payload));
-    if (imageFile) {
-      formData.append('image_file', imageFile);
-    }
-    return (await axiosInstance.put<LearningSubtopic>(
-      ENDPOINTS.LEARNING_SUBTOPIC_DETAIL(subtopicId),
-      formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
-    )).data;
-  },
-
-  deleteLearningSubtopic: async (subtopicId: number): Promise<void> => {
+  /**
+   * Удаление подтемы по ее ID.
+   * @param subtopicId - ID подтемы.
+   */
+  deleteSubtopic: async (subtopicId: number): Promise<void> => {
     await axiosInstance.delete(ENDPOINTS.LEARNING_SUBTOPIC_DETAIL(subtopicId));
   },
 
-  getTopics: async (): Promise<PaginatedTopicsResponse> => { 
-    // Убрали params, так как API /v1/admin/topics/ судя по всему не принимает limit/offset 
-    // или принимает их некорректно, вызывая 422
-    const response = await axiosInstance.get<LearningTopicOptionForSelect[]>(
-      ENDPOINTS.LEARNING_TOPICS_LIST // Отправляем без query параметров
+  /**
+   * Создание новой подтемы для конкретной темы.
+   * @param topicId - ID родительской темы (для URL).
+   * @param jsonData - Данные подтемы для JSON-поля.
+   * @param imageFile - Файл изображения (опционально).
+   */
+  createSubtopic: async (
+    topicId: number,
+    jsonData: LearningSubtopicCreatePayload,
+    imageFile: File | null
+  ): Promise<LearningSubtopic> => {
+    // ЗАЩИТА: Проверяем topicId перед отправкой
+    if (!topicId || typeof topicId !== 'number' || isNaN(topicId)) {
+      throw new Error('Невозможно создать подтему без валидного ID родительской темы.');
+    }
+
+    const formData = new FormData();
+    formData.append('subtopic_data_json', JSON.stringify(jsonData));
+
+    if (imageFile) {
+      formData.append('image_file', imageFile);
+    }
+    
+    const url = ENDPOINTS.LEARNING_SUBTOPICS_BY_TOPIC(topicId);
+    
+    const response = await axiosInstance.post<LearningSubtopic>(url, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
+  },
+
+  /**
+   * Обновление существующей подтемы по ее ID.
+   * @param subtopicId - ID подтемы для обновления.
+   * @param jsonData - Данные для обновления.
+   * @param imageFile - Новый файл изображения (опционально).
+   * @param removeImage - Флаг для удаления текущего изображения.
+   */
+  updateSubtopic: async (
+    subtopicId: number,
+    jsonData: LearningSubtopicUpdatePayload,
+    imageFile: File | null,
+    removeImage: boolean
+  ): Promise<LearningSubtopic> => {
+    const formData = new FormData();
+    formData.append('subtopic_data_json', JSON.stringify(jsonData));
+
+    if (imageFile) {
+      formData.append('image_file', imageFile);
+    }
+    if (removeImage) {
+      formData.append('remove_image', 'true');
+    }
+
+    const response = await axiosInstance.put<LearningSubtopic>(
+      ENDPOINTS.LEARNING_SUBTOPIC_DETAIL(subtopicId),
+      formData,
+      {
+        headers: { 'Content-Type': 'multipart/form-data' },
+      }
     );
-    return {
-      items: response.data,
-      total: response.data.length, // API для тем, вероятно, тоже не возвращает total
-    };
+    return response.data;
+  },
+
+  // =======================================================================
+  // === ВСПОМОГАТЕЛЬНЫЙ МЕТОД ДЛЯ ПОЛУЧЕНИЯ СПИСКА ТЕМ (TOPICS) ===
+  // =======================================================================
+
+  /**
+   * Получает ВСЕ темы обучения для использования в выпадающем списке (селекте).
+   * Используем большой лимит, чтобы получить все темы сразу.
+   * В реальном проекте с >1000 тем может понадобиться поиск с подгрузкой.
+   */
+  getAllTopics: async (): Promise<LearningTopic[]> => {
+    const response = await axiosInstance.get<LearningTopic[]>(
+      `${ENDPOINTS.LEARNING_TOPICS_LIST}?limit=1000&offset=0`
+    );
+    return Array.isArray(response.data) ? response.data : [];
   },
 };

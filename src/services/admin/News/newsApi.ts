@@ -1,85 +1,94 @@
-// src/services/admin/News/newsApi.ts
+// --- Путь: src/services/admin/News/newsApi.ts ---
 
 import axiosInstance from '../api/axios';
 import { ENDPOINTS } from '../api/endpoints';
 import { buildQueryString } from '../api/buildQuery';
-import type {
-  NewsItem,
-  NewsCreatePayload,
-  NewsUpdatePayload,
-  PaginatedNewsResponse,
-  NewsFilterParams,
+
+import type { 
+  News, 
+  NewsFilterParams, 
+  NewsCreateUpdatePayload 
 } from '../../../types/admin/News/news.types';
 
 export const NewsApi = {
-  getNewsList: async (
-    params: NewsFilterParams = {}
-  ): Promise<PaginatedNewsResponse> => {
-    const query = buildQueryString({
-      limit: params.limit,
-      offset: params.offset,
-    });
-    const response = await axiosInstance.get<NewsItem[]>(`${ENDPOINTS.NEWS_LIST}${query}`);
+  // --- Запросы на чтение ---
+
+  getNewsList: async (params: NewsFilterParams = {}): Promise<News[]> => {
+    const query = buildQueryString(params);
+    const response = await axiosInstance.get<News[]>(`${ENDPOINTS.NEWS_LIST}${query}`);
+    return Array.isArray(response.data) ? response.data : [];
+  },
+
+  getNewsById: async (newsId: number): Promise<News> => {
+    const response = await axiosInstance.get<News>(ENDPOINTS.NEWS_DETAIL(newsId));
     return response.data;
   },
 
-  getNewsItemById: async (newsId: number): Promise<NewsItem> => {
-    return (await axiosInstance.get<NewsItem>(ENDPOINTS.NEWS_DETAIL(newsId))).data;
-  },
+  // --- Запросы на изменение ---
 
-  createNewsItem: async (
-    payload: NewsCreatePayload,
-    previewFile?: File | null
-  ): Promise<NewsItem> => {
+  deleteNews: async (newsId: number): Promise<void> => {
+    await axiosInstance.delete(ENDPOINTS.NEWS_DETAIL(newsId));
+  },
+  
+  createNews: async (
+    jsonData: NewsCreateUpdatePayload,
+    previewFile: File | null,
+    backgroundFile: File | null,
+    contentFiles: File[]
+  ): Promise<News> => {
     const formData = new FormData();
-    formData.append('data_json', JSON.stringify(payload));
+    formData.append('news_data_json', JSON.stringify(jsonData));
+
     if (previewFile) {
       formData.append('preview_file', previewFile);
     }
-
-    return (await axiosInstance.post<NewsItem>(ENDPOINTS.NEWS_LIST, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    })).data;
-  },
-
-  updateNewsItem: async (
-    newsId: number,
-    payload: NewsUpdatePayload,
-    previewFile?: File | null
-  ): Promise<NewsItem> => {
-    const formData = new FormData();
-    if (Object.keys(payload).length > 0 || !previewFile) {
-      formData.append('data_json', JSON.stringify(payload));
-    } else if (previewFile && Object.keys(payload).length === 0) {
-       formData.append('data_json', JSON.stringify({}));
-    }
-
-    if (previewFile) {
-      formData.append('preview_file', previewFile);
+    if (backgroundFile) {
+      formData.append('background_file', backgroundFile);
     }
     
-    if (formData.entries().next().done && !previewFile) { // Проверка, что formData не пустой, если файла нет
-        // Если и payload пуст, и файла нет, возможно, не стоит делать запрос или вернуть текущий элемент
-        // Это поведение зависит от требований API. Сейчас он отправит data_json="{}" если только файл.
-        // Если и файла нет, и payload пуст, formData будет пустым.
-        // API для PUT /v1/admin/news/{news_id} говорит, что data_json и preview_file опциональны.
-        // Если отправлять пустой FormData, это может вызвать ошибку на некоторых бэкендах.
-        // Для безопасности, если нет ни payload, ни файла, можно вернуть ошибку на клиенте
-        // или получить текущий элемент и вернуть его, имитируя "нет изменений".
-        // Пока оставляем как есть, API должен обработать это.
-    }
+    contentFiles.forEach(file => {
+      formData.append('content_files', file);
+    });
 
-
-    return (await axiosInstance.put<NewsItem>(ENDPOINTS.NEWS_DETAIL(newsId), formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data',
-      },
-    })).data;
+    const response = await axiosInstance.post<News>(ENDPOINTS.NEWS_LIST, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
   },
 
-  deleteNewsItem: async (newsId: number): Promise<void> => {
-    await axiosInstance.delete(ENDPOINTS.NEWS_DETAIL(newsId));
+  updateNews: async (
+    newsId: number,
+    jsonData: NewsCreateUpdatePayload,
+    previewFile: File | null,
+    backgroundFile: File | null,
+    contentFiles: File[],
+    removePreview: boolean,
+    removeBackground: boolean
+  ): Promise<News> => {
+    const formData = new FormData();
+    formData.append('news_data_json', JSON.stringify(jsonData));
+
+    if (previewFile) {
+      formData.append('preview_file', previewFile);
+    }
+    if (backgroundFile) {
+      formData.append('background_file', backgroundFile);
+    }
+    
+    if (removePreview) {
+      formData.append('remove_preview', 'true');
+    }
+    if (removeBackground) {
+      formData.append('remove_background', 'true');
+    }
+    
+    contentFiles.forEach(file => {
+      formData.append('content_files', file);
+    });
+
+    const response = await axiosInstance.put<News>(ENDPOINTS.NEWS_DETAIL(newsId), formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
   },
 };

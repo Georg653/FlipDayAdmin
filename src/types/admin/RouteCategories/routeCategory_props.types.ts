@@ -1,33 +1,27 @@
-// src/types/admin/RouteCategories/routeCategory_props.types.ts
-import type { RouteCategory, RouteCategoryFormData } from './routeCategory.types';
+// --- Путь: src/types/admin/RouteCategories/routeCategory_props.types.ts ---
 
-export interface RouteCategoryFormProps {
-  formData: RouteCategoryFormData;
-  handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
-  handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleSubmit: (e: React.FormEvent) => void;
-  setShowForm: (show: boolean) => void;
-  isSubmitting: boolean;
-  categoryToEdit?: RouteCategory | null;
-  formError: string | null;
-}
+import type { RouteCategory } from './routeCategory.types';
 
-export interface RouteCategoriesHeaderProps {
-  isLoading: boolean;
-  onShowForm: () => void;
-  // filterSearch?: string;
-  // onSearchFilterChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}
-
+// --- Пропсы для ТАБЛИЦЫ ---
+// Убраны все пропсы, связанные с пагинацией, так как ее здесь нет.
 export interface RouteCategoriesTableProps {
   categories: RouteCategory[];
   isLoading: boolean;
   error: string | null;
   onEdit: (category: RouteCategory) => void;
   onDelete: (id: number) => void;
-  currentPage: number;
-  handlePreviousPage: () => void;
-  handleNextPage: () => void;
-  canGoNext: boolean;
-  canGoPrevious: boolean;
+}
+
+// --- Пропсы для ХЕДЕРА ---
+export interface RouteCategoriesHeaderProps {
+  isLoading: boolean;
+  onShowForm: () => void;
+}
+
+// --- Пропсы для ФОРМЫ ---
+// Добавлены все необходимые пропсы.
+export interface RouteCategoryFormProps {
+  categoryToEdit: RouteCategory | null;
+  onSuccess: () => void;
+  onCancel: () => void;
 }

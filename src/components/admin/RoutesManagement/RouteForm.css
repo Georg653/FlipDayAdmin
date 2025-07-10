@@ -1,0 +1,33 @@
+/* --- Путь: src/components/admin/RoutesManagement/RouteForm.css --- */
+
+.route-form-grid {
+  display: grid;
+  /* ИЗМЕНЕНИЕ: Делаем колонки в пропорции 2:3. Левая занимает 2 части, правая 3. */
+  grid-template-columns: 2fr 3fr; 
+  gap: 2.5rem; /* Немного увеличим отступ между колонками */
+  width: 100%;
+}
+
+.form-column {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.form-group-inline {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: 1rem;
+}
+
+/* Добавляем стили, чтобы поля внутри группы были на всю ширину */
+.form-group > label {
+    display: block;
+    margin-bottom: 0.5rem;
+}
+
+.form-group > input,
+.form-group > textarea,
+.form-group > .select-wrapper {
+    width: 100%;
+}

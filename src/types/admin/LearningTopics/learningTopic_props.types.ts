@@ -1,38 +1,34 @@
-// src/types/admin/LearningTopics/learningTopic_props.types.ts
-import type React from 'react';
-import type { LearningTopic, LearningTopicFormData } from './learningTopic.types';
+// --- Путь: src/types/admin/LearningTopics/learningTopic_props.types.ts ---
 
-// Пропсы для компонента LearningTopicForm.tsx
-export interface LearningTopicFormProps {
-  formData: LearningTopicFormData;
-  isSubmitting: boolean;
-  formError: string | null;
-  handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => void;
-  handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleSubmit: (e: React.FormEvent) => void;
-  setShowForm: (show: boolean) => void;
-  handleCancel: () => void;
-  learningTopicToEdit?: LearningTopic | null;
+import type { LearningTopic } from './learningTopic.types';
+
+// Пропсы для таблицы
+export interface LearningTopicsTableProps {
+  topics: LearningTopic[];
+  isLoading: boolean;
+  error: string | null;
+  onEdit: (topic: LearningTopic) => void;
+  onDelete: (id: number) => void;
+  // Пагинация
+  currentPage: number;
+  canGoNext: boolean;
+  canGoPrevious: boolean;
+  handleNextPage: () => void;
+  handlePreviousPage: () => void;
 }
 
-// Пропсы для компонента LearningTopicsHeader.tsx
+// Пропсы для хедера
 export interface LearningTopicsHeaderProps {
   isLoading: boolean;
   onShowForm: () => void;
-  // filterNameInput?: string;
-  // onFilterNameChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  // Здесь могут быть фильтры в будущем, как в NewsHeader
+  // filterValue: string;
+  // onFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
-// Пропсы для компонента LearningTopicsTable.tsx
-export interface LearningTopicsTableProps {
-  learningTopics: LearningTopic[];
-  isLoading: boolean;
-  error: string | null;
-  onEdit: (learningTopic: LearningTopic) => void;
-  onDelete: (id: number) => void;
-  currentPage: number;
-  totalItems: number;
-  itemsPerPage: number;
-  handlePreviousPage: () => void;
-  handleNextPage: () => void;
+// Пропсы для формы
+export interface LearningTopicFormProps {
+  topicToEdit: LearningTopic | null;
+  onSuccess: (topic: LearningTopic) => void;
+  onCancel: () => void;
 }

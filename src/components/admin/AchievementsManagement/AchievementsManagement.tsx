@@ -6,16 +6,19 @@ import { AchievementForm } from './AchievementForm';
 import { useAchievementsManagement } from '../../../hooks/admin/AchievementsManagement/useAchievementsManagement';
 import '../../../styles/admin/ui/PageLayout.css';
 
+// КОММЕНТАРИЙ: Мы используем `export const` (именованный экспорт). 
+// Это решает твою прошлую ошибку "does not provide an export named..."
 export const AchievementsManagement: React.FC = () => {
+  // 1. Вызываем наш главный хук. Вся логика, state, запросы - внутри него.
   const {
     achievements,
     loading,
     error,
     currentPage,
-    totalItems,
-    itemsPerPage,
     handlePreviousPage,
     handleNextPage,
+    canGoNext,
+    canGoPrevious,
     handleEdit,
     handleShowAddForm,
     handleDelete,
@@ -25,13 +28,16 @@ export const AchievementsManagement: React.FC = () => {
     achievementToEdit,
   } = useAchievementsManagement();
 
+  // 2. Рендерим UI, просто передавая данные и функции из хука в дочерние компоненты.
   return (
     <div className="page-container">
+      {/* Хедер получает колбэк для показа формы и флаг загрузки */}
       <AchievementsHeader
         isLoading={loading}
         onShowForm={handleShowAddForm}
       />
 
+      {/* Форма показывается по условию showForm */}
       {showForm && (
         <AchievementForm
           setShowForm={setShowForm}
@@ -39,19 +45,25 @@ export const AchievementsManagement: React.FC = () => {
           onSuccess={handleFormSuccess}
         />
       )}
-
-      <AchievementsTable
-        achievements={achievements || []} // <--- Гарантируем, что передается массив
-        isLoading={loading}
-        error={error}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        currentPage={currentPage}
-        totalItems={totalItems}
-        itemsPerPage={itemsPerPage}
-        handlePreviousPage={handlePreviousPage}
-        handleNextPage={handleNextPage}
-      />
+      
+      {/* 
+        Улучшаем UX: таблица скрывается, когда мы создаем новый элемент, 
+        но остается видимой, когда мы редактируем существующий.
+      */}
+      {(!showForm || achievementToEdit) && (
+        <AchievementsTable
+          achievements={achievements}
+          isLoading={loading}
+          error={error}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          currentPage={currentPage}
+          handlePreviousPage={handlePreviousPage}
+          handleNextPage={handleNextPage}
+          canGoNext={canGoNext}
+          canGoPrevious={canGoPrevious}
+        />
+      )}
     </div>
   );
 };

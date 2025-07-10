@@ -1,145 +1,101 @@
-// src/hooks/admin/Points/usePointForm.ts
-import { useState, useEffect, useCallback } from 'react';
-import { v4 as uuidv4 } from 'uuid';
+// --- Путь: src/hooks/admin/Points/usePointForm.ts ---
+
+import { useState, useEffect } from 'react';
 import type {
-  Point,
-  PointFullCreatePayload,
-  PointFullUpdatePayload,
-  PointFormData,
-  PointFormOptions,
-  ContentBlock,
-  PointContentResponse,
+  Point, PointFormData, PointCreateUpdatePayload, ContentBlockFormData, ContentBlock
 } from '../../../types/admin/Points/point.types';
-import { initialPointFormData } from '../../../types/admin/Points/point.types';
 import { PointsApi } from '../../../services/admin/Points/pointsApi';
-// import { useNotification } from '../../../contexts/admin/NotificationContext';
+import { createImageUrl } from '../../../utils/media';
 
-export const usePointForm = (options: PointFormOptions) => {
-  const { onSuccess, pointToEdit } = options;
-  // const { showNotification } = useNotification();
+// Эта функция нужна для создания новых пустых блоков в конструкторе
+const createInitialBlock = (type: ContentBlockFormData['type']): ContentBlockFormData => {
+  const id = crypto.randomUUID();
+  switch (type) {
+    case 'text': return { id, type, text: '' };
+    case 'heading': return { id, type, text: '', level: 2 };
+    case 'quote': return { id, type, text: '', author: '' };
+    case 'image': return { id, type, src: '', caption: '', file: null };
+    case 'video': return { id, type, src: '', caption: '', file: null };
+    case 'audio': return { id, type, src: '', title: '', file: null };
+    case 'album': return { id, type, items: [] };
+    case 'slider': return { id, type, items: [] };
+  }
+};
 
+const initialPointFormData: PointFormData = {
+  name: '', description: '', latitude: '', longitude: '', is_partner: false, budget: '0',
+  image_url: null, image_file: null, remove_image: false,
+  has_content: false, remove_content: false, content: [],
+};
+
+interface UsePointFormOptions {
+  pointToEdit: Point | null;
+  onSuccess: () => void;
+}
+
+export const usePointForm = ({ pointToEdit, onSuccess }: UsePointFormOptions) => {
   const [formData, setFormData] = useState<PointFormData>(initialPointFormData);
-  const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
-  const [editingBlock, setEditingBlock] = useState<ContentBlock | null>(null);
-  const [editingBlockIndex, setEditingBlockIndex] = useState<number | null>(null);
-
-  const resetForm = useCallback(() => {
-    setFormData(initialPointFormData);
-    setFormError(null);
-    setIsBlockModalOpen(false);
-    setEditingBlock(null);
-    setEditingBlockIndex(null);
-  }, []);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (pointToEdit) {
-      const contentDataFromHook = pointToEdit.contentData;
+      const contentForForm: ContentBlockFormData[] = (pointToEdit.content_data?.content || []).map((apiBlock: ContentBlock) => {
+        const baseBlock: Partial<ContentBlockFormData> = { ...apiBlock, id: crypto.randomUUID(), file: null };
+        if (apiBlock.type === 'album' || apiBlock.type === 'slider') {
+          baseBlock.items = (apiBlock.items || []).map((itemUrl: string) => ({
+            id: crypto.randomUUID(), url: itemUrl, file: null, preview: createImageUrl(itemUrl),
+          }));
+        }
+        return baseBlock as ContentBlockFormData;
+      });
       setFormData({
         name: pointToEdit.name,
-        description: pointToEdit.description || "",
-        latitude: pointToEdit.latitude.toString(),
-        longitude: pointToEdit.longitude.toString(),
+        description: pointToEdit.description,
+        latitude: String(pointToEdit.latitude),
+        longitude: String(pointToEdit.longitude),
         is_partner: pointToEdit.is_partner,
-        budget: pointToEdit.budget.toString(),
+        budget: String(pointToEdit.budget),
+        image_url: pointToEdit.image,
         image_file: null,
-        image_preview_url: pointToEdit.image,
-        existing_image_url: pointToEdit.image,
-        point_content_background: contentDataFromHook?.background || "",
-        point_content_blocks: (contentDataFromHook?.content || []).map(block => ({
-          ...block,
-          __id: block.id || uuidv4(),
-        })),
+        remove_image: false,
+        has_content: !!pointToEdit.content_data,
+        remove_content: false,
+        content: contentForForm,
       });
-      setFormError(null);
     } else {
-      resetForm();
+      setFormData(initialPointFormData);
     }
-  }, [pointToEdit, resetForm]);
+  }, [pointToEdit]);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (formError) setFormError(null);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+    const isCheckbox = type === 'checkbox';
+    const checked = isCheckbox ? (e.target as HTMLInputElement).checked : false;
+    setFormData(prev => ({ ...prev, [name]: isCheckbox ? checked : value }));
   };
-
-  // ИЗМЕНЕННЫЙ handleCheckboxChange
-  const handleCheckboxChange = (name: string, checked: boolean) => {
-    setFormData((prev) => ({
-      ...prev,
-      [name]: checked,
-    }));
-    if (formError) setFormError(null);
+  const handleFileChange = (file: File | null) => {
+    setFormData(prev => ({ ...prev, image_file: file }));
   };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    setFormData((prev) => ({
-      ...prev,
-      image_file: file,
-      image_preview_url: file ? URL.createObjectURL(file) : prev.existing_image_url,
-    }));
-    if (formError) setFormError(null);
+  const handleRemoveImage = (checked: boolean) => {
+    setFormData(prev => ({ ...prev, remove_image: checked }));
   };
-
-  const handleAddBlock = () => {
-    setEditingBlock({ type: 'text', content: '', __id: uuidv4() } as ContentBlock);
-    setEditingBlockIndex(null);
-    setIsBlockModalOpen(true);
+  const addBlock = (type: ContentBlockFormData['type'], index: number) => {
+    const newContent = [...formData.content];
+    newContent.splice(index + 1, 0, createInitialBlock(type));
+    setFormData(prev => ({ ...prev, content: newContent }));
   };
-
-  const handleEditBlock = (index: number) => {
-    const blockToEdit = formData.point_content_blocks[index];
-    setEditingBlock({ ...blockToEdit });
-    setEditingBlockIndex(index);
-    setIsBlockModalOpen(true);
+  const removeBlock = (id: string) => {
+    setFormData(prev => ({ ...prev, content: prev.content.filter(block => block.id !== id) }));
   };
-
-  const handleDeleteBlock = (index: number) => {
-    // eslint-disable-next-line no-restricted-globals
-    if (confirm('Удалить этот блок контента?')) {
-      setFormData(prev => ({
-        ...prev,
-        point_content_blocks: prev.point_content_blocks.filter((_, i) => i !== index),
-      }));
-    }
+  const updateBlock = (id: string, newBlockData: Partial<ContentBlockFormData>) => {
+    setFormData(prev => ({ ...prev, content: prev.content.map(block => (block.id === id ? { ...block, ...newBlockData } : block)), }));
   };
-
-  const handleSaveBlock = (blockData: ContentBlock) => {
-    setFormData(prev => {
-      const newContentBlocks = [...prev.point_content_blocks];
-      if (editingBlockIndex !== null) {
-        newContentBlocks[editingBlockIndex] = { ...blockData, __id: newContentBlocks[editingBlockIndex].__id };
-      } else {
-        newContentBlocks.push({ ...blockData, __id: blockData.__id || uuidv4() });
-      }
-      return { ...prev, point_content_blocks: newContentBlocks };
-    });
-    setIsBlockModalOpen(false);
-    setEditingBlock(null);
-    setEditingBlockIndex(null);
-  };
-
-  const handleCloseBlockModal = () => {
-    setIsBlockModalOpen(false);
-    setEditingBlock(null);
-    setEditingBlockIndex(null);
-  };
-  
-  const moveBlock = (index: number, direction: 'up' | 'down') => {
-    const newBlocks = [...formData.point_content_blocks];
-    const blockToMove = newBlocks[index];
-    const targetIndex = direction === 'up' ? index - 1 : index + 1;
-
-    if (targetIndex < 0 || targetIndex >= newBlocks.length) return;
-
-    newBlocks.splice(index, 1);
-    newBlocks.splice(targetIndex, 0, blockToMove);
-    setFormData(prev => ({ ...prev, point_content_blocks: newBlocks }));
+  const moveBlock = (fromIndex: number, toIndex: number) => {
+    const newContent = [...formData.content];
+    const [movedItem] = newContent.splice(fromIndex, 1);
+    newContent.splice(toIndex, 0, movedItem);
+    setFormData(prev => ({ ...prev, content: newContent }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -147,108 +103,69 @@ export const usePointForm = (options: PointFormOptions) => {
     setIsSubmitting(true);
     setFormError(null);
 
-    if (!formData.name.trim() || !formData.latitude.trim() || !formData.longitude.trim()) {
-      setFormError('Название и координаты точки обязательны.');
-      setIsSubmitting(false);
-      return;
-    }
     const latitude = parseFloat(formData.latitude);
     const longitude = parseFloat(formData.longitude);
     const budget = parseFloat(formData.budget);
-
-    if (isNaN(latitude) || isNaN(longitude)) {
-      setFormError('Координаты должны быть числами.');
-      setIsSubmitting(false);
-      return;
+    if (!formData.name.trim() || !formData.description.trim()) {
+      setFormError('Название и описание не могут быть пустыми.'); setIsSubmitting(false); return;
     }
-     if (isNaN(budget)) {
-      setFormError('Бюджет должен быть числом.');
-      setIsSubmitting(false);
-      return;
+    if (isNaN(latitude) || isNaN(longitude) || isNaN(budget)) {
+      setFormError('Координаты и бюджет должны быть числами.'); setIsSubmitting(false); return;
     }
 
-    const contentForApiCleaned: ContentBlock[] = formData.point_content_blocks.map(block => {
-      const { __id, ...restOfBlock } = block;
-      return restOfBlock as ContentBlock; 
-    });
-
-    const dataJsonPayload = {
-      name: formData.name.trim(),
-      description: formData.description.trim(),
-      latitude,
-      longitude,
-      is_partner: formData.is_partner,
-      budget,
-      content_data: (formData.point_content_background || contentForApiCleaned.length > 0) 
-        ? {
-            background: formData.point_content_background || null,
-            content: contentForApiCleaned,
+    const payloadContent: ContentBlock[] | undefined = formData.has_content
+      ? formData.content.map(formBlock => {
+          switch (formBlock.type) {
+            case 'text': return { type: 'text', text: formBlock.text || '', content: formBlock.text || '' };
+            case 'heading': return { type: 'heading', text: formBlock.text || '', level: formBlock.level || 2, content: formBlock.text || '' };
+            case 'quote': return { type: 'quote', text: formBlock.text || '', author: formBlock.author || null, content: formBlock.text || '' };
+            case 'image': case 'video': return { type: formBlock.type, src: formBlock.file ? '' : formBlock.src || '', caption: formBlock.caption || null, content: formBlock.file ? '' : formBlock.src || '' };
+            case 'audio': return { type: 'audio', src: formBlock.file ? '' : formBlock.src || '', title: formBlock.title || null, content: formBlock.file ? '' : formBlock.src || '' };
+            case 'album': case 'slider':
+              const apiItems = (formBlock.items || []).map(item => (item.file ? '' : item.url || '')).filter(Boolean);
+              return { type: formBlock.type, items: apiItems, content: apiItems.join(',') };
+            default: throw new Error('Unknown block type');
           }
-        : null, 
+        }).filter((b): b is ContentBlock => b !== null)
+      : undefined;
+
+    const payload: PointCreateUpdatePayload = {
+      name: formData.name, description: formData.description,
+      latitude, longitude, budget,
+      is_partner: formData.is_partner,
+      image_url: formData.image_file ? null : formData.image_url,
+      content_data: (payloadContent && payloadContent.length > 0) ? { content: payloadContent } : null,
+      remove_content: formData.remove_content,
     };
     
+    const contentFiles: File[] = [];
+    if (formData.has_content) {
+      formData.content.forEach(block => {
+        if (block.file) contentFiles.push(block.file);
+        if (block.items) {
+          block.items.forEach(item => { if (item.file) contentFiles.push(item.file); });
+        }
+      });
+    }
+
     try {
-      let result: Point;
-      const isEditing = !!pointToEdit;
-
-      if (isEditing && pointToEdit) {
-        const updatePayload: PointFullUpdatePayload = { ...dataJsonPayload };
-        if (updatePayload.content_data === null) {
-            // delete updatePayload.content_data; // Раскомментируй, если API ожидает отсутствия поля, а не null
-        }
-
-        result = await PointsApi.updatePoint(
-          pointToEdit.id,
-          updatePayload,
-          formData.image_file
-        );
-        console.log('Точка успешно обновлена!');
+      if (pointToEdit) {
+        await PointsApi.updatePoint(pointToEdit.id, payload, formData.image_file, contentFiles, formData.remove_image);
       } else {
-        const createPayload: PointFullCreatePayload = dataJsonPayload as PointFullCreatePayload;
-         if (createPayload.content_data === null) {
-            // delete createPayload.content_data; // Раскомментируй, если API ожидает отсутствия поля, а не null
-        }
-        result = await PointsApi.createPoint(
-          createPayload,
-          formData.image_file
-        );
-        console.log('Точка успешно создана!');
+        await PointsApi.createPoint(payload, formData.image_file, contentFiles);
       }
-      onSuccess?.(result);
-    } catch (error: any) {
-      console.error("Ошибка сохранения точки:", error);
-      const message = error.response?.data?.detail || `Не удалось ${pointToEdit ? 'обновить' : 'создать'} точку.`;
-      let errorMessage = "Произошла неизвестная ошибка.";
-      if (typeof message === 'string') {
-        errorMessage = message;
-      } else if (Array.isArray(message) && message.length > 0 && typeof message[0] === 'object' && message[0].msg) { // Проверка на структуру ошибки FastAPI
-        errorMessage = message.map(err => `${err.loc?.join('.') || 'поле'} - ${err.msg}`).join('; ');
-      }
-      console.error(errorMessage);
-      setFormError(errorMessage);
+      onSuccess();
+    } catch (err: any) {
+      const detail = err.response?.data?.detail;
+      setFormError(typeof detail === 'object' ? JSON.stringify(detail) : detail || 'Произошла ошибка.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return {
-    formData,
-    setFormData,
-    handleChange,
-    handleCheckboxChange, // Измененная функция
-    handleFileChange,
-    handleSubmit,
-    isSubmitting,
-    formError,
-    resetForm,
-    isBlockModalOpen,
-    editingBlock,
-    editingBlockIndex,
-    handleAddBlock,
-    handleEditBlock,
-    handleDeleteBlock,
-    handleSaveBlock,
-    handleCloseBlockModal,
-    moveBlock,
+    formData, setFormData, isSubmitting, formError,
+    handleChange, handleFileChange, handleRemoveImage, handleSubmit,
+    addBlock, removeBlock, updateBlock, moveBlock,
   };
 };

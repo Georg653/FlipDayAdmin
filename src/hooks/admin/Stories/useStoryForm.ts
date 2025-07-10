@@ -1,221 +1,149 @@
-// src/hooks/admin/StoriesManagement/useStoryForm.ts
-import { useState, useEffect, useCallback } from 'react';
+// --- Путь: src/hooks/admin/Stories/useStoryForm.ts ---
+
+import { useState, useEffect } from 'react';
 import type {
   Story,
-  StoryCreatePayload,
-  StoryUpdatePayload,
   StoryFormData,
-  StoryFormOptions,
-  StoryContentItem,
-  StoryContentType,
-} from '../../../types/admin/Stories/story.types'; // Убедись, что все эти типы экспортируются из story.types.ts
-import { initialStoryFormData } from '../../../types/admin/Stories/story.types'; // initialStoryFormData - значение, импортируем отдельно
+  StoryContentItemFormData,
+  StoryCreateUpdatePayload,
+} from '../../../types/admin/Stories/story.types';
+import { initialStoryFormData, createInitialStoryContentItem } from '../../../types/admin/Stories/story.types';
 import { StoriesApi } from '../../../services/admin/Stories/storiesApi';
-// import { useNotification } from '../../../contexts/admin/NotificationContext'; // Если используешь
 
-export const useStoryForm = (options: StoryFormOptions) => {
-  const { onSuccess, storyToEdit } = options;
-  // const { showNotification } = useNotification();
+interface UseStoryFormOptions {
+  storyToEdit: Story | null;
+  onSuccess: (story: Story) => void;
+}
 
+// --- НОВАЯ ВСПОМОГАТЕЛЬНАЯ ФУНКЦИЯ ---
+/**
+ * Преобразует строку из <input type="datetime-local"> в строку UTC формата "YYYY-MM-DD HH:MM:SS"
+ * @param localDateTimeString - строка вида "2025-07-07T14:00"
+ * @returns строка вида "2025-07-07 11:00:00" (если локальное время было UTC+3) или null
+ */
+const formatToUtcStringForBackend = (localDateTimeString: string): string | null => {
+  if (!localDateTimeString) {
+    return null;
+  }
+  const date = new Date(localDateTimeString);
+  // Проверка на случай, если дата невалидна
+  if (isNaN(date.getTime())) {
+    return null;
+  }
+  
+  const year = date.getUTCFullYear();
+  const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+  const day = String(date.getUTCDate()).padStart(2, '0');
+  const hours = String(date.getUTCHours()).padStart(2, '0');
+  const minutes = String(date.getUTCMinutes()).padStart(2, '0');
+  const seconds = String(date.getUTCSeconds()).padStart(2, '0');
+  
+  return `${year}-${month}-${day} ${hours}:${minutes}:${seconds}`;
+};
+
+
+export const useStoryForm = ({ storyToEdit, onSuccess }: UseStoryFormOptions) => {
   const [formData, setFormData] = useState<StoryFormData>(initialStoryFormData);
-  const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const resetForm = useCallback(() => {
-    setFormData(initialStoryFormData);
-    setFormError(null);
-  }, []);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (storyToEdit) {
-      // Освобождаем предыдущий Object URL, если он был создан для preview_url
-      if (formData.preview_url && formData.preview_url.startsWith('blob:')) {
-        URL.revokeObjectURL(formData.preview_url);
-      }
-      setFormData({
-        name: storyToEdit.name || "",
+      // При редактировании преобразуем дату из UTC в формат для input
+      const localExpiresAt = storyToEdit.expires_at 
+        ? new Date(storyToEdit.expires_at + 'Z').toISOString().slice(0, 16)
+        : '';
+
+      const formReadyData: StoryFormData = {
+        name: storyToEdit.name || '',
         is_active: storyToEdit.is_active,
-        preview_file: null, // Сбрасываем файл при редактировании
-        preview_url: storyToEdit.preview, // Показываем URL с сервера
-        existing_preview_url: storyToEdit.preview, // Сохраняем URL с сервера
-        content_items: storyToEdit.content_items ? JSON.parse(JSON.stringify(storyToEdit.content_items)) : [], // Глубокое копирование
-        expires_at: storyToEdit.expires_at ? new Date(storyToEdit.expires_at).toISOString().split('T')[0] : "",
-      });
-      setFormError(null);
-    } else {
-      resetForm();
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [storyToEdit, resetForm]); // formData добавлено в зависимости не нужно, т.к. это вызовет цикл
-
-  // Освобождаем Object URL при размонтировании компонента или изменении preview_url
-  useEffect(() => {
-    const currentPreviewUrl = formData.preview_url;
-    return () => {
-      if (currentPreviewUrl && currentPreviewUrl.startsWith('blob:')) {
-        URL.revokeObjectURL(currentPreviewUrl);
-      }
-    };
-  }, [formData.preview_url]);
-
-
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev: StoryFormData) => ({
-      ...prev,
-      [name]: value,
-    }));
-    if (formError) setFormError(null);
-  };
-
-  const handleCheckboxChange = (name: string, checked: boolean) => {
-    setFormData((prev: StoryFormData) => ({
-      ...prev,
-      [name]: checked,
-    }));
-    if (formError) setFormError(null);
-  };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    setFormData((prev: StoryFormData) => {
-      // Освобождаем старый Object URL, если он был
-      if (prev.preview_url && prev.preview_url.startsWith('blob:')) {
-        URL.revokeObjectURL(prev.preview_url);
-      }
-      return {
-        ...prev,
-        preview_file: file,
-        preview_url: file ? URL.createObjectURL(file) : prev.existing_preview_url, // Показываем новое превью или старое с сервера
+        expires_at: localExpiresAt,
+        preview_url: storyToEdit.preview,
+        preview_file: null,
+        preview_local_url: storyToEdit.preview,
+        remove_preview: false,
+        content_items: storyToEdit.content_items.map(item => ({
+          id: crypto.randomUUID(),
+          type: item.type,
+          duration: String(item.duration || 5),
+          content_url: item.content,
+          content_file: null,
+          content_preview: item.content,
+        })),
       };
-    });
-    if (formError) setFormError(null);
-  };
+      setFormData(formReadyData);
+    } else {
+      setFormData(initialStoryFormData);
+    }
+  }, [storyToEdit]);
 
+  // Остальные хендлеры без изменений
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    const { name, value, type } = e.target;
+    if (type === 'checkbox') {
+      const checked = (e.target as HTMLInputElement).checked;
+      setFormData(prev => ({ ...prev, [name]: checked }));
+    } else {
+      setFormData(prev => ({ ...prev, [name]: value }));
+    }
+  };
+  const handlePreviewFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0] || null;
+    setFormData(prev => ({...prev, preview_file: file, preview_local_url: file ? URL.createObjectURL(file) : prev.preview_url, remove_preview: !file,}));
+  };
+  const handleRemovePreview = (checked: boolean) => {
+    setFormData(prev => ({...prev, remove_preview: checked, preview_file: checked ? null : prev.preview_file, preview_local_url: checked ? null : (prev.preview_file ? URL.createObjectURL(prev.preview_file) : prev.preview_url),}));
+  };
   const addContentItem = () => {
-    setFormData((prev: StoryFormData) => ({
-      ...prev,
-      content_items: [...prev.content_items, { type: "image", content: "" }], // По умолчанию добавляем image
-    }));
+    setFormData(prev => ({ ...prev, content_items: [...prev.content_items, createInitialStoryContentItem()] }));
+  };
+  const removeContentItem = (id: string) => {
+    setFormData(prev => ({ ...prev, content_items: prev.content_items.filter(item => item.id !== id) }));
+  };
+  const handleContentItemChange = (id: string, field: keyof StoryContentItemFormData, value: any) => {
+    setFormData(prev => ({...prev, content_items: prev.content_items.map(item => (item.id === id ? { ...item, [field]: value } : item)),}));
+  };
+  const handleContentItemFileChange = (id: string, file: File | null) => {
+    setFormData(prev => ({ ...prev, content_items: prev.content_items.map(item => { if (item.id === id) { if (item.content_preview && item.content_preview.startsWith('blob:')) { URL.revokeObjectURL(item.content_preview); } return { ...item, content_file: file, content_preview: file ? URL.createObjectURL(file) : item.content_url }; } return item; }),}));
   };
 
-  // Эта функция теперь будет использоваться в StoryForm.tsx через setFormData
-  // Но оставим ее здесь как пример, если бы она экспортировалась
-  const _updateContentItemDirectlyInHook = (index: number, field: keyof StoryContentItem, value: string | StoryContentType) => {
-    setFormData((prev: StoryFormData) => {
-      const newContentItems = [...prev.content_items];
-      if (newContentItems[index]) {
-        // @ts-ignore - для поля type, value может быть string, но мы ожидаем StoryContentType из селекта
-        newContentItems[index] = { ...newContentItems[index], [field]: value };
-      }
-      return { ...prev, content_items: newContentItems };
-    });
-  };
-
-  const removeContentItem = (index: number) => {
-    setFormData((prev: StoryFormData) => ({
-      ...prev,
-      content_items: prev.content_items.filter((_, i: number) => i !== index),
-    }));
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Валидация
-    if (!formData.preview_file && !formData.existing_preview_url) { // Проверяем и существующий URL при редактировании
-      setFormError('Превью-изображение обязательно.');
-      setIsSubmitting(false);
-      return;
-    }
-    if (formData.content_items.length === 0) {
-        setFormError('Добавьте хотя бы один элемент контента.');
-        setIsSubmitting(false);
-        return;
-    }
-    if (formData.content_items.some(item => !item.content.trim())) {
-        setFormError('URL/Содержимое для каждого элемента контента истории обязательно.');
-        setIsSubmitting(false);
-        return;
-    }
-
     setIsSubmitting(true);
     setFormError(null);
 
-    const storyDataPayload: StoryCreatePayload = {
-      name: formData.name.trim() || null,
+    const payload: StoryCreateUpdatePayload = {
+      name: formData.name || null,
       is_active: formData.is_active,
-      content_items: formData.content_items,
-      expires_at: formData.expires_at ? new Date(formData.expires_at).toISOString() : null,
+      
+      // ИСПОЛЬЗУЕМ НАШУ НОВУЮ ФУНКЦИЮ
+      expires_at: formatToUtcStringForBackend(formData.expires_at),
+
+      content_items: formData.content_items.map(item => ({
+        type: item.type,
+        duration: parseFloat(item.duration) || 5,
+        content: item.content_file ? '' : (item.content_url || ''),
+      })),
     };
+    
+    const contentMediaFiles = formData.content_items.map(item => item.content_file).filter((file): file is File => file !== null);
 
     try {
       let result: Story;
-      const isEditing = !!storyToEdit;
-
-      if (isEditing && storyToEdit) {
-        const updatePayload: StoryUpdatePayload = { ...storyDataPayload };
-        // Если имя было null и осталось пустым, оно должно остаться null
-        if (formData.name.trim() === "" && storyToEdit.name === null) {
-            updatePayload.name = null;
-        }
-        // Если имя было каким-то и стало пустым, API может ожидать null
-        else if (formData.name.trim() === "" && storyToEdit.name !== null) {
-            updatePayload.name = null; // Или "" если API это допускает
-        }
-
-        result = await StoriesApi.updateStory(
-          storyToEdit.id,
-          updatePayload,
-          formData.preview_file // Передаем файл, если он выбран
-        );
-        console.log('История успешно обновлена!');
-        // showNotification?.('История успешно обновлена!', 'success');
+      if (storyToEdit) {
+        result = await StoriesApi.updateStory(storyToEdit.id, payload, formData.preview_file, contentMediaFiles, formData.remove_preview);
       } else {
-        if (!formData.preview_file) { // Дополнительная проверка, если логика обошла первую
-          setFormError('Превью-изображение обязательно для новой истории.');
-          setIsSubmitting(false);
-          return;
-        }
-        result = await StoriesApi.createStory(
-          storyDataPayload,
-          formData.preview_file
-        );
-        console.log('История успешно создана!');
-        // showNotification?.('История успешно создана!', 'success');
+        result = await StoriesApi.createStory(payload, formData.preview_file, contentMediaFiles);
       }
-      onSuccess?.(result);
-    } catch (error: any) {
-      console.error("Ошибка сохранения истории:", error);
-      const message = error.response?.data?.detail || error.message || `Не удалось ${storyToEdit ? 'обновить' : 'создать'} историю.`;
-      let errorMessage = "Произошла неизвестная ошибка.";
-
-      if (typeof message === 'string') {
-        errorMessage = message;
-      } else if (Array.isArray(message) && message.length > 0 && message[0].msg) { // Проверка для FastAPI ошибок валидации
-        errorMessage = message.map(err => `${err.loc?.slice(-1)[0] || 'поле'} - ${err.msg}`).join('; ');
-      }
-      console.error(errorMessage);
-      // showNotification?.(errorMessage, 'error');
-      setFormError(errorMessage);
+      onSuccess(result);
+    } catch (err: any) {
+      const message = err.response?.data?.detail || 'Произошла ошибка при сохранении.';
+      setFormError(typeof message === 'string' ? message : JSON.stringify(message));
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  return {
-    formData,
-    setFormData, // Экспортируем setFormData, чтобы StoryForm мог напрямую менять content_items
-    handleChange,
-    handleCheckboxChange,
-    handleFileChange,
-    handleSubmit,
-    isSubmitting,
-    formError,
-    resetForm,
-    addContentItem,
-    // updateContentItem: _updateContentItemDirectlyInHook, // Если бы мы хотели экспортировать эту
-    removeContentItem,
-  };
+  return { formData, isSubmitting, formError, handleChange, handlePreviewFileChange, handleRemovePreview, addContentItem, removeContentItem, handleContentItemChange, handleContentItemFileChange, handleSubmit };
 };

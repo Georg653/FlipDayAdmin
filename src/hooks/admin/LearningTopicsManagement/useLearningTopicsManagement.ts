@@ -1,119 +1,138 @@
-// src/hooks/admin/LearningTopicsManagement/useLearningTopicsManagement.ts
+// --- Путь: src/hooks/admin/LearningTopicsManagement/useLearningTopicsManagement.ts ---
+
 import { useState, useEffect, useCallback } from 'react';
-import type {
-  LearningTopic,
-  LearningTopicFilterParams,
-  PaginatedLearningTopicsResponse,
-} from '../../../types/admin/LearningTopics/learningTopic.types';
+import type { LearningTopic } from '../../../types/admin/LearningTopics/learningTopic.types';
 import { LearningTopicsApi } from '../../../services/admin/LearningTopics/learningTopicsApi';
-import { ITEMS_PER_PAGE_LEARNING_TOPICS } from '../../../constants/admin/LearningTopics/learningTopics.constants';
-import { useDebounce } from '../LearningTopics/useDebounce'; // Предполагаем, что useDebounce есть
+
+const ITEMS_PER_PAGE = 10;
 
 export const useLearningTopicsManagement = () => {
-  const [learningTopics, setLearningTopics] = useState<LearningTopic[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [topics, setTopics] = useState<LearningTopic[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  
+  // Состояние для пагинации
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const [itemsPerPage, setItemsPerPage] = useState(ITEMS_PER_PAGE_LEARNING_TOPICS);
-  const [filterName, setFilterName] = useState('');
-  const debouncedFilterName = useDebounce(filterName, 500);
-  const [showForm, setShowForm] = useState(false);
-  const [learningTopicToEdit, setLearningTopicToEdit] = useState<LearningTopic | null>(null);
+  const [hasNextPage, setHasNextPage] = useState(false);
 
-  const fetchLearningTopics = useCallback(async () => {
+  // Состояние для модального окна и редактирования
+  const [showForm, setShowForm] = useState(false);
+  const [topicToEdit, setTopicToEdit] = useState<LearningTopic | null>(null);
+
+  // Функция для загрузки данных
+  const fetchTopics = useCallback(async (page: number) => {
     setLoading(true);
     setError(null);
     try {
-      const params: LearningTopicFilterParams = {
-        offset: (currentPage - 1) * itemsPerPage,
-        limit: itemsPerPage,
-        name: debouncedFilterName || undefined,
-      };
-      const response: PaginatedLearningTopicsResponse = await LearningTopicsApi.getLearningTopics(params);
-      setLearningTopics(response.items);
-      if (response.items.length < itemsPerPage && currentPage === 1) {
-        setTotalItems(response.items.length);
-      } else if (response.items.length < itemsPerPage) {
-        setTotalItems((currentPage - 1) * itemsPerPage + response.items.length);
-      } else {
-        setTotalItems(currentPage * itemsPerPage + 1); // Гадаем, что есть еще
-      }
-      if (response.items.length === 0 && currentPage === 1) {
-        setTotalItems(0);
-      }
+      const data = await LearningTopicsApi.getTopics({
+        offset: (page - 1) * ITEMS_PER_PAGE,
+        limit: ITEMS_PER_PAGE,
+      });
+      setTopics(data);
+      // "Слепая" пагинация: если пришло ровно столько элементов, сколько запрашивали,
+      // предполагаем, что есть следующая страница.
+      setHasNextPage(data.length === ITEMS_PER_PAGE);
     } catch (err: any) {
-      const message = err.response?.data?.detail || 'Не удалось загрузить темы.';
-      setError(message);
-      setLearningTopics([]);
-      setTotalItems(0);
+      let errorMessage = 'Ошибка загрузки тем обучения.';
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        errorMessage = typeof detail === 'object' ? JSON.stringify(detail, null, 2) : String(detail);
+      }
+      setError(errorMessage);
+      setTopics([]); // В случае ошибки сбрасываем массив
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage, debouncedFilterName]);
+  }, []);
 
+  // Первоначальная загрузка данных при монтировании компонента и при смене страницы
   useEffect(() => {
-    fetchLearningTopics();
-  }, [fetchLearningTopics]);
+    fetchTopics(currentPage);
+  }, [currentPage, fetchTopics]);
 
-  const handleFilterNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setFilterName(e.target.value);
-    setCurrentPage(1);
-  }, []);
+  // --- Обработчики действий пользователя ---
 
-  const handleEdit = useCallback((topic: LearningTopic) => {
-    setLearningTopicToEdit(topic);
+  const handleEdit = (topic: LearningTopic) => {
+    setTopicToEdit(topic);
     setShowForm(true);
-  }, []);
+  };
 
-  const handleShowAddForm = useCallback(() => {
-    setLearningTopicToEdit(null);
+  const handleShowAddForm = () => {
+    setTopicToEdit(null); // Сбрасываем тему для редактирования
     setShowForm(true);
-  }, []);
+  };
 
   const handleDelete = async (id: number) => {
-    if (!confirm('Вы уверены, что хотите удалить эту тему? Это удалит все связанные подтемы и страницы.')) return;
-    setError(null);
+    if (!window.confirm('Вы уверены, что хотите удалить эту тему обучения? Это может повлиять на связанные подтемы.')) {
+      return;
+    }
+    
+    // Оптимистичное удаление из UI
+    const originalTopics = [...topics];
+    setTopics(currentTopics => currentTopics.filter(t => t.id !== id));
+    
     try {
-      await LearningTopicsApi.deleteLearningTopic(id);
-      if (learningTopics.length === 1 && currentPage > 1) {
-        setCurrentPage(prev => prev - 1);
-      } else {
-        fetchLearningTopics();
+      await LearningTopicsApi.deleteTopic(id);
+      // Если удаление на последней странице привело к пустому списку, возможно, стоит перейти на предыдущую
+      // Но для простоты пока просто перезагрузим текущую страницу
+      if (topics.length === 1 && currentPage > 1) {
+        setCurrentPage(p => p - 1);
       }
     } catch (err: any) {
-      const message = err.response?.data?.detail || 'Не удалось удалить тему.';
-      setError(message);
+      setError('Ошибка удаления темы.');
+      setTopics(originalTopics); // Откат состояния в случае ошибки
     }
   };
 
-  const handleFormSuccess = useCallback(() => {
+  // Коллбэк, который будет вызываться из формы при успешном сохранении
+  const handleFormSuccess = (updatedTopic: LearningTopic) => {
     setShowForm(false);
-    setLearningTopicToEdit(null);
-    fetchLearningTopics();
-  }, [fetchLearningTopics]);
-
-  const handleCancelForm = useCallback(() => {
-    setShowForm(false);
-    setLearningTopicToEdit(null);
-  }, []);
-
-  const handlePreviousPage = useCallback(() => {
-    if (currentPage > 1) setCurrentPage(prev => prev - 1);
-  }, [currentPage]);
-
-  const handleNextPage = useCallback(() => {
-    const totalPagesGuess = Math.ceil(totalItems / itemsPerPage);
-    if (currentPage < totalPagesGuess || learningTopics.length === itemsPerPage) {
-        setCurrentPage(prev => prev + 1);
+    setTopicToEdit(null);
+    if (topicToEdit) {
+      // Обновляем существующий элемент в списке
+      setTopics(currentTopics => 
+        currentTopics.map(t => (t.id === updatedTopic.id ? updatedTopic : t))
+      );
+    } else {
+      // Добавляем новый элемент в начало списка, если мы на первой странице
+      if (currentPage === 1) {
+        setTopics(currentTopics => [updatedTopic, ...currentTopics].slice(0, ITEMS_PER_PAGE));
+      } else {
+        // Если мы не на первой странице, просто переходим на нее, чтобы увидеть новый элемент
+        setCurrentPage(1);
+      }
     }
-  }, [currentPage, totalItems, itemsPerPage, learningTopics.length]);
+  };
+
+  // --- Обработчики пагинации ---
+  const handlePreviousPage = () => {
+    if (currentPage > 1) {
+      setCurrentPage(p => p - 1);
+    }
+  };
+
+  const handleNextPage = () => {
+    if (hasNextPage) {
+      setCurrentPage(p => p + 1);
+    }
+  };
 
   return {
-    learningTopics, loading, error, currentPage, setCurrentPage, totalItems, itemsPerPage,
-    setItemsPerPage, handlePreviousPage, handleNextPage,
-    filterName, handleFilterNameChange,
-    handleEdit, handleShowAddForm, handleDelete, handleFormSuccess, handleCancelForm,
-    showForm, setShowForm, learningTopicToEdit,
+    topics,
+    loading,
+    error,
+    handleEdit,
+    handleDelete,
+    handleShowAddForm,
+    handleFormSuccess,
+    showForm,
+    setShowForm,
+    topicToEdit,
+    // Все для пагинации
+    currentPage,
+    canGoNext: hasNextPage,
+    canGoPrevious: currentPage > 1,
+    handleNextPage,
+    handlePreviousPage,
   };
 };

@@ -1,10 +1,11 @@
-// src/components/admin/StoriesManagement/StoriesManagement.tsx
+// --- Путь: src/components/admin/StoriesManagement/StoriesManagement.tsx ---
+
 import React from 'react';
+import { useStoriesManagement } from '../../../hooks/admin/Stories/useStoriesManagement';
 import { StoriesHeader } from './StoriesHeader';
 import { StoriesTable } from './StoriesTable';
 import { StoryForm } from './StoryForm';
-import { useStoriesManagement } from '../../../hooks/admin/Stories/useStoriesManagement';
-import { ITEMS_PER_PAGE_STORIES } from '../../../constants/admin/Stories/stories.constants';
+import { Modal } from '../../ui/Modal/Modal';
 import '../../../styles/admin/ui/PageLayout.css';
 
 export const StoriesManagement: React.FC = () => {
@@ -12,39 +13,47 @@ export const StoriesManagement: React.FC = () => {
     stories,
     loading,
     error,
-    currentPage,
-    handlePreviousPage,
-    handleNextPage,
-    canLoadMore,
-    filterIsActive,
-    handleIsActiveFilterChange,
     handleEdit,
-    handleShowAddForm,
     handleDelete,
+    handleShowAddForm,
     handleFormSuccess,
     showForm,
     setShowForm,
     storyToEdit,
+    currentPage,
+    canGoNext,
+    canGoPrevious,
+    handleNextPage,
+    handlePreviousPage,
+    activeFilter,
+    handleFilterChange,
+    handleToggleStatus, // <--- ПОЛУЧАЕМ
   } = useStoriesManagement();
-
-  // console.log('[StoriesManagement] State from hook:', {loading, error, storiesCount: stories.length});
 
   return (
     <div className="page-container">
       <StoriesHeader
-        isLoading={loading} // Передаем loading для блокировки кнопки "Добавить"
+        isLoading={loading}
         onShowForm={handleShowAddForm}
-        filterIsActive={filterIsActive}
-        onIsActiveFilterChange={handleIsActiveFilterChange}
+        activeFilter={activeFilter}
+        onFilterChange={handleFilterChange}
       />
 
-      {showForm && (
+      <Modal
+        isOpen={showForm}
+        onClose={() => setShowForm(false)}
+        title={storyToEdit ? 'Редактировать историю' : 'Создать новую историю'}
+        size="xl"
+      >
         <StoryForm
-          setShowForm={setShowForm}
           storyToEdit={storyToEdit}
-          onSuccess={handleFormSuccess}
+          onSuccess={(story) => {
+            handleFormSuccess(story); 
+            setShowForm(false);
+          }}
+          onCancel={() => setShowForm(false)}
         />
-      )}
+      </Modal>
 
       <StoriesTable
         stories={stories}
@@ -52,11 +61,12 @@ export const StoriesManagement: React.FC = () => {
         error={error}
         onEdit={handleEdit}
         onDelete={handleDelete}
+        onToggleStatus={handleToggleStatus} // <--- ПЕРЕДАЕМ
         currentPage={currentPage}
-        handlePreviousPage={handlePreviousPage}
+        canGoNext={canGoNext}
+        canGoPrevious={canGoPrevious}
         handleNextPage={handleNextPage}
-        canLoadMore={canLoadMore}
-        itemsPerPage={ITEMS_PER_PAGE_STORIES}
+        handlePreviousPage={handlePreviousPage}
       />
     </div>
   );

@@ -1,58 +1,65 @@
-// src/components/admin/RoutesManagement/RoutesManagement.tsx
+// --- Путь: src/components/admin/RoutesManagement/RoutesManagement.tsx ---
+
 import React from 'react';
+import { useRoutesManagement } from '../../../hooks/admin/Routes/useRoutesManagement';
 import { RoutesHeader } from './RoutesHeader';
 import { RoutesTable } from './RoutesTable';
-import { RouteForm } from './RouteForm'; // Наша основная форма для маршрута
-import { useRoutesManagement } from '../../../hooks/admin/Routes/useRoutesManagement';
+import { RouteForm } from './RouteForm';
+import { Modal } from '../../ui/Modal/Modal';
 import '../../../styles/admin/ui/PageLayout.css';
 
 export const RoutesManagement: React.FC = () => {
   const {
     routes,
+    categories,
     loading,
     error,
-    currentPage,
-    itemsPerPage,
-    handlePreviousPage,
-    handleNextPage,
-    canGoNext,
-    canGoPrevious,
-    filterCategoryId,
-    handleCategoryFilterChange,
-    routeCategories,
-    loadingCategories,
-    // filterSearch, // Если будут фильтры
-    // handleSearchFilterChange, // Если будут фильтры
     handleEdit,
-    handleShowAddForm,
     handleDelete,
+    handleShowAddForm,
     handleFormSuccess,
     showForm,
     setShowForm,
     routeToEdit,
-    getCategoryNameById,
+    // Пагинация
+    currentPage,
+    hasNextPage,
+    handlePreviousPage,
+    handleNextPage,
+    // Фильтры
+    searchFilter,
+    categoryFilter,
+    handleCategoryFilterChange,
+    handleSearchFilterChange,
   } = useRoutesManagement();
 
   return (
     <div className="page-container">
       <RoutesHeader
-        isLoading={loading || loadingCategories} // Учитываем загрузку категорий для фильтра
+        isLoading={loading}
         onShowForm={handleShowAddForm}
-        filterCategoryId={filterCategoryId}
+        categories={categories}
+        categoryFilter={categoryFilter}
         onCategoryFilterChange={handleCategoryFilterChange}
-        routeCategories={routeCategories}
-        loadingRouteCategories={loadingCategories}
-        // filterSearch={filterSearch}
-        // onSearchFilterChange={handleSearchFilterChange}
+        searchFilter={searchFilter}
+        onSearchFilterChange={handleSearchFilterChange}
       />
 
-      {showForm && (
+      <Modal
+        isOpen={showForm}
+        onClose={() => setShowForm(false)}
+        title={routeToEdit ? 'Редактировать маршрут' : 'Создать новый маршрут'}
+        size="xl" // Большой размер для конструктора
+      >
         <RouteForm
-          setShowForm={setShowForm}
           routeToEdit={routeToEdit}
-          onSuccess={handleFormSuccess}
+          onSuccess={() => {
+            handleFormSuccess();
+            setShowForm(false);
+          }}
+          onCancel={() => setShowForm(false)}
         />
-      )}
+      </Modal>
 
       <RoutesTable
         routes={routes}
@@ -61,12 +68,10 @@ export const RoutesManagement: React.FC = () => {
         onEdit={handleEdit}
         onDelete={handleDelete}
         currentPage={currentPage}
-        itemsPerPage={itemsPerPage}
-        handlePreviousPage={handlePreviousPage}
+        canGoNext={hasNextPage}
+        canGoPrevious={currentPage > 1}
         handleNextPage={handleNextPage}
-        canGoNext={canGoNext}
-        canGoPrevious={canGoPrevious}
-        getCategoryName={getCategoryNameById}
+        handlePreviousPage={handlePreviousPage}
       />
     </div>
   );

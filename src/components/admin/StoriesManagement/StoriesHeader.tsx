@@ -1,46 +1,60 @@
-// src/components/admin/StoriesManagement/StoriesHeader.tsx
+// --- Путь: src/components/admin/StoriesManagement/StoriesHeader.tsx ---
+
 import React from 'react';
 import { Button } from '../../ui/Button/Button';
-import { Select } from '../../ui/Select/Select'; // Наш простой нативный селект
-import { STORY_IS_ACTIVE_FILTER_OPTIONS } from '../../../constants/admin/Stories/stories.constants';
+import { Select } from '../../ui/Select/Select';
+// ИСПРАВЛЕН ИМПОРТ: добавлено ключевое слово 'type'
+import type { SelectOption } from '../../ui/Select/Select';
 import '../../../styles/admin/ui/Header.css';
+import type { StoriesHeaderProps } from '../../../types/admin/Stories/story_props.types';
 
-interface StoriesHeaderProps {
-  isLoading: boolean;
-  onShowForm: () => void;
-  filterIsActive: boolean | null; // null для "все", true для "активные", false для "неактивные"
-  onIsActiveFilterChange: (value: string) => void; // value будет "all", "true", "false"
-}
+
+const filterOptions: SelectOption[] = [
+  { value: 'all', label: 'Все статусы' },
+  { value: 'true', label: 'Только активные' },
+  { value: 'false', label: 'Только неактивные' },
+];
 
 export const StoriesHeader: React.FC<StoriesHeaderProps> = ({
   isLoading,
   onShowForm,
-  filterIsActive,
-  onIsActiveFilterChange,
+  activeFilter,
+  onFilterChange,
 }) => {
-  // Преобразуем boolean | null в строку для значения селекта
-  const selectValue = filterIsActive === null ? "all" : filterIsActive ? "true" : "false";
+  const handleSelectChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const value = e.target.value;
+    if (value === 'all') {
+      onFilterChange(undefined);
+    } else {
+      onFilterChange(value === 'true');
+    }
+  };
+
+  const getFilterValue = () => {
+    if (activeFilter === true) return 'true';
+    if (activeFilter === false) return 'false';
+    return 'all';
+  }
 
   return (
     <div className="page-header">
       <div className="page-header-top">
         <h2 className="page-header-title">Управление Историями</h2>
-        <Button onClick={onShowForm} disabled={isLoading} customVariant="save" variant="success">
-          Добавить Историю
+        <Button onClick={onShowForm} disabled={isLoading} variant="success">
+          Добавить историю
         </Button>
       </div>
 
-      <div className="page-header-filters"> {/* Раскомментировал блок для фильтров */}
-        <div className="filter-item" style={{ minWidth: '200px' }}> {/* Добавил minWidth для селекта */}
-          <Select
-            id="is_active_filter_story"
-            label="Фильтр по активности:"
-            value={selectValue}
-            onChange={(e) => onIsActiveFilterChange(e.target.value)}
-            options={STORY_IS_ACTIVE_FILTER_OPTIONS}
-            disabled={isLoading}
-          />
-        </div>
+      <div className="page-header-filters">
+        <Select
+          id="story-status-filter"
+          label="Фильтр по статусу"
+          options={filterOptions}
+          value={getFilterValue()}
+          onChange={handleSelectChange}
+          disabled={isLoading}
+          className="filter-item"
+        />
       </div>
     </div>
   );

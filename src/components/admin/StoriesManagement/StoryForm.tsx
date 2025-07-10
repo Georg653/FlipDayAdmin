@@ -1,204 +1,189 @@
-// src/components/admin/StoriesManagement/StoryForm.tsx
+// --- Путь: src/components/admin/StoriesManagement/StoryForm.tsx ---
+
 import React from 'react';
 import { useStoryForm } from '../../../hooks/admin/Stories/useStoryForm';
-
-import type { 
-    StoryFormOptions, 
-    Story, 
-    StoryContentItem,
-    StoryContentType,
-    StoryFormData // Импортируем для явной типизации в handleContentItemChange
-} from '../../../types/admin/Stories/story.types';
+import type { StoryFormProps } from '../../../types/admin/Stories/story_props.types';
+import type { StoryContentItemFormData } from '../../../types/admin/Stories/story.types';
 import { Button } from '../../ui/Button/Button';
 import { Input } from '../../ui/Input/Input';
 import { Checkbox } from '../../ui/Checkbox/Checkbox';
 import { ImageUpload } from '../../ui/ImageUpload/ImageUpload';
 import { Select } from '../../ui/Select/Select';
-import { STORY_CONTENT_ITEM_TYPES } from '../../../constants/admin/Stories/stories.constants';
+import type { SelectOption } from '../../ui/Select/Select'; // Исправленный импорт
 import '../../../styles/admin/ui/Form.css';
 import './StoryForm.css';
 
-interface StoryFormPropsExtended extends StoryFormOptions {
-  setShowForm: (show: boolean) => void;
-}
+const contentTypeOptions: SelectOption[] = [
+  { value: 'image', label: 'Изображение' },
+  { value: 'video', label: 'Видео' },
+];
 
-export const StoryForm: React.FC<StoryFormPropsExtended> = ({
-  onSuccess,
+export const StoryForm: React.FC<StoryFormProps> = ({
   storyToEdit,
-  setShowForm,
+  onSuccess,
+  onCancel,
 }) => {
   const {
     formData,
-    setFormData, // Импортируем setFormData
-    handleChange,
-    handleCheckboxChange,
-    handleFileChange,
-    handleSubmit,
     isSubmitting,
     formError,
-    resetForm,
+    handleChange,
+    handlePreviewFileChange,
+    handleRemovePreview,
     addContentItem,
-    // updateContentItem, // Мы будем использовать локальную функцию для обновления через setFormData
     removeContentItem,
-  } = useStoryForm({
-    onSuccess: (data: Story) => {
-      onSuccess?.(data);
-      setShowForm(false);
-      resetForm();
-    },
-    storyToEdit
-  });
-
-  const handleCancel = () => {
-    setShowForm(false);
-    resetForm();
-  };
-
-  // Локальная функция для обновления элемента контента, использующая setFormData
-  const handleContentItemChange = (
-    index: number,
-    field: keyof StoryContentItem,
-    value: string | StoryContentType // Тип значения может быть строкой или StoryContentType
-  ) => {
-    setFormData((prevFormData: StoryFormData) => { // Явно типизируем prevFormData
-      const newContentItems = prevFormData.content_items.map((item, i) =>
-        i === index ? { ...item, [field]: value } : item
-      );
-      return { ...prevFormData, content_items: newContentItems };
-    });
-  };
+    handleContentItemChange,
+    handleContentItemFileChange,
+    handleSubmit,
+  } = useStoryForm({ storyToEdit, onSuccess });
 
   return (
-    <div className="form-container">
-      <h3 className="form-title">
-        {storyToEdit ? 'Редактировать Историю' : 'Создать Историю'}
-      </h3>
-      {formError && <p className="form-error">{formError}</p>}
-
-      <form onSubmit={handleSubmit}>
-        <div className="form-inputs">
-          {/* Название Истории */}
+    <form onSubmit={handleSubmit} noValidate className="form-container story-form">
+      {formError && <p className="form-error">Ошибка: {formError}</p>}
+      
+      <div className="form-grid">
+        {/* --- ЛЕВАЯ КОЛОНКА: Основные настройки --- */}
+        <div className="form-column">
           <div className="form-group">
-            <label htmlFor="name_story">Название истории (необязательно)</label>
-            <Input
-              id="name_story"
-              name="name"
-              value={formData.name}
-              onChange={handleChange}
-              placeholder="Введите название истории"
-              disabled={isSubmitting}
-            />
+            <label htmlFor="name">Название истории</label>
+            <Input id="name" name="name" value={formData.name} onChange={handleChange} disabled={isSubmitting} />
           </div>
 
-          {/* Активность */}
-          <div className="form-group form-group-checkbox">
+          <div className="form-group">
+            <label htmlFor="expires_at">Дата и время истечения</label>
+            <Input id="expires_at" name="expires_at" type="datetime-local" value={formData.expires_at} onChange={handleChange} disabled={isSubmitting} />
+          </div>
+
+          <div className="form-group">
             <Checkbox
-              id="is_active_story"
-              name="is_active" // Это имя будет в handleChange, но мы используем handleCheckboxChange
+              id="is_active"
+              name="is_active"
+              label="История активна"
               checked={formData.is_active}
-              onChange={(checked) => handleCheckboxChange("is_active", checked)}
-              disabled={isSubmitting}
-            />
-            <label htmlFor="is_active_story">Активна</label>
-          </div>
-          
-          {/* Дата истечения срока */}
-          <div className="form-group">
-            <label htmlFor="expires_at_story">Дата истечения (необязательно)</label>
-            <Input
-              id="expires_at_story"
-              name="expires_at"
-              type="date"
-              value={formData.expires_at}
-              onChange={handleChange}
+              onChange={(checked) => handleChange({ target: { name: 'is_active', value: checked, type: 'checkbox' } } as any)}
               disabled={isSubmitting}
             />
           </div>
 
-          {/* Превью-изображение */}
           <div className="form-group">
             <ImageUpload
-              id="preview_file_story"
+              id="story_preview"
               name="preview_file"
-              onChange={handleFileChange}
-              previewUrl={formData.preview_url}
-              existingImageUrl={formData.existing_preview_url}
-              label="Превью-изображение (обязательно для новой)"
-              disabled={isSubmitting}
+              label="Превью истории"
+              onChange={handlePreviewFileChange}
+              previewUrl={formData.preview_local_url}
+              disabled={isSubmitting || formData.remove_preview}
             />
-             {(!formData.preview_file && !formData.existing_preview_url) && <p className="form-field-error">Превью обязательно для новой истории.</p>}
           </div>
 
-          <fieldset className="form-group content-items-fieldset">
-            <legend>Элементы контента истории</legend>
-            {formData.content_items.map((item: StoryContentItem, index: number) => (
-              <div key={index} className="content-item-block">
-                <h4>Элемент #{index + 1}</h4>
-                <div className="form-group">
-                  <Select
-                    id={`content_item_type_${index}`}
-                    // name не используется т.к. мы обновляем через handleContentItemChange
-                    label="Тип контента"
-                    value={item.type}
-                    onChange={(e) => handleContentItemChange(index, "type", e.target.value as StoryContentType)}
-                    options={STORY_CONTENT_ITEM_TYPES}
-                    disabled={isSubmitting}
-                  />
-                </div>
-                <div className="form-group">
-                  <label htmlFor={`content_item_content_${index}`}>URL контента*</label>
-                  <Input
-                    id={`content_item_content_${index}`}
-                    value={item.content}
-                    onChange={(e) => handleContentItemChange(index, "content", e.target.value)}
-                    placeholder="Введите URL (для image/video)"
-                    disabled={isSubmitting}
-                    required
-                  />
-                </div>
-                <Button
-                  type="button"
-                  onClick={() => removeContentItem(index)}
-                  variant="destructive"
-                  size="sm"
-                  disabled={isSubmitting}
-                  className="remove-content-item-button"
-                >
-                  Удалить элемент
-                </Button>
-              </div>
-            ))}
-            <Button
-              type="button"
-              onClick={addContentItem}
-              variant="outline"
-              size="sm"
-              disabled={isSubmitting}
-              className="add-content-item-button"
-            >
-              Добавить элемент контента
-            </Button>
-            {formData.content_items.length === 0 && <p className="form-field-error">Добавьте хотя бы один элемент контента.</p>}
-          </fieldset>
+          {storyToEdit?.preview && (
+            <div className="form-group">
+              <Checkbox
+                id="remove_preview"
+                name="remove_preview"
+                label="Удалить текущее превью"
+                checked={formData.remove_preview}
+                onChange={handleRemovePreview}
+                disabled={isSubmitting}
+              />
+            </div>
+          )}
         </div>
 
-        <div className="form-actions">
-          <Button type="submit" disabled={isSubmitting} customVariant="save" variant="success">
-            {isSubmitting
-              ? storyToEdit ? 'Сохранение...' : 'Создание...'
-              : storyToEdit ? 'Сохранить изменения' : 'Создать'}
-          </Button>
-          <Button
-            type="button"
-            onClick={handleCancel}
-            disabled={isSubmitting}
-            customVariant="cancel"
-            variant="outline"
-          >
-            Отмена
+        {/* --- ПРАВАЯ КОЛОНКА: Слайды --- */}
+        <div className="form-column">
+          <h4>Слайды истории</h4>
+          <div className="story-content-items-list">
+            {formData.content_items.map((item, index) => (
+              <ContentItemForm
+                key={item.id}
+                item={item}
+                index={index}
+                isSubmitting={isSubmitting}
+                onRemove={() => removeContentItem(item.id)}
+                onItemChange={handleContentItemChange}
+                onFileChange={handleContentItemFileChange}
+              />
+            ))}
+          </div>
+          <Button type="button" variant="outline" size="sm" onClick={addContentItem} disabled={isSubmitting}>
+            + Добавить слайд
           </Button>
         </div>
-      </form>
+      </div>
+      
+      <div className="form-actions">
+        <Button type="submit" disabled={isSubmitting} variant="success">
+          {isSubmitting ? 'Сохранение...' : 'Сохранить историю'}
+        </Button>
+        <Button type="button" onClick={onCancel} disabled={isSubmitting} variant="outline">
+          Отмена
+        </Button>
+      </div>
+    </form>
+  );
+};
+
+// --- Вложенный компонент для одного слайда ---
+interface ContentItemFormProps {
+  item: StoryContentItemFormData;
+  index: number;
+  isSubmitting: boolean;
+  onRemove: () => void;
+  onItemChange: (id: string, field: keyof StoryContentItemFormData, value: any) => void;
+  onFileChange: (id: string, file: File | null) => void;
+}
+
+const ContentItemForm: React.FC<ContentItemFormProps> = ({
+  item,
+  index,
+  isSubmitting,
+  onRemove,
+  onItemChange,
+  onFileChange,
+}) => {
+  const handleFile = (e: React.ChangeEvent<HTMLInputElement>) => {
+    onFileChange(item.id, e.target.files?.[0] || null);
+  };
+  
+  return (
+    <div className="story-content-item">
+      <div className="content-item-header">
+        <h5>Слайд {index + 1}</h5>
+        <Button type="button" variant="destructive" size="sm" onClick={onRemove} disabled={isSubmitting}>
+          Удалить
+        </Button>
+      </div>
+      <div className="form-group">
+        <Select
+          label="Тип контента"
+          id={`type-${item.id}`}
+          options={contentTypeOptions}
+          value={item.type}
+          onChange={(e) => onItemChange(item.id, 'type', e.target.value)}
+          disabled={isSubmitting}
+        />
+      </div>
+      <div className="form-group">
+        <label htmlFor={`duration-${item.id}`}>Длительность (сек)</label>
+        <Input
+          id={`duration-${item.id}`}
+          type="number"
+          value={item.duration}
+          onChange={(e) => onItemChange(item.id, 'duration', e.target.value)}
+          disabled={isSubmitting}
+        />
+      </div>
+      <div className="form-group">
+        <ImageUpload
+          id={`content_file-${item.id}`}
+          name="content_file"
+          label="Файл контента (картинка/видео)"
+          onChange={handleFile}
+          previewUrl={item.content_preview}
+          disabled={isSubmitting}
+        />
+      </div>
     </div>
   );
 };

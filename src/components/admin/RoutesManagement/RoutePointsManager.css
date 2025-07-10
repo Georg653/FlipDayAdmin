@@ -1,88 +1,89 @@
-/* src/components/admin/RoutesManagement/RoutePointsManager.css */
-.route-points-manager {
-  border: 1px solid #e0e0e0;
-  padding: 1rem;
-  border-radius: 6px;
-  background-color: #fdfdfd;
-}
+/* --- Путь: src/components/admin/RoutesManagement/RoutePointsManager.css --- */
 
-.points-columns-container {
-  display: flex;
-  gap: 1.5rem; /* Отступ между колонками */
+.points-manager {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1.5rem;
+  border: 1px solid #e2e8f0;
+  padding: 1rem;
+  border-radius: 8px;
+  background-color: #f8fafc;
 }
 
 .points-column {
-  flex: 1; /* Каждая колонка занимает половину доступного пространства */
-  min-width: 300px; /* Минимальная ширина для предотвращения слишком сильного сжатия */
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
 }
 
-.points-column h5 {
-  font-size: 1rem;
+.points-column-title {
+  margin: 0;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #e2e8f0;
+  font-size: 1.1rem; /* Чуть крупнее */
   font-weight: 600;
-  margin-bottom: 0.75rem;
-  color: #333;
+  color: #1e293b; /* Чуть темнее */
+}
+
+.points-search-input {
+  width: 100%;
+  margin-bottom: 0.5rem; /* Небольшой отступ снизу */
 }
 
 .points-list {
   list-style: none;
   padding: 0;
   margin: 0;
-  max-height: 300px; /* Ограничение высоты списка с прокруткой */
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  height: 450px; /* Увеличим высоту */
   overflow-y: auto;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-  padding: 0.5rem;
+  background-color: #ffffff;
 }
 
-.point-list-item {
+/* Стили для элемента списка */
+.point-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.5rem 0.75rem;
-  border-bottom: 1px solid #f0f0f0;
-  background-color: #fff;
+  padding: 0.6rem 0.75rem; /* Немного больше паддинги */
+  border-bottom: 1px solid #f1f5f9;
+  transition: background-color 0.2s ease-in-out; /* Плавный переход */
 }
-.point-list-item:last-child {
+.point-item:last-child {
   border-bottom: none;
 }
-.point-list-item:hover {
-  background-color: #f7f7f9;
+.point-item.available:hover {
+  background-color: #f1f5f9; /* Ховер для доступных точек */
 }
 
-.point-info {
-  flex-grow: 1;
-  margin-right: 0.5rem;
+/* Стили для выбранной (перетаскиваемой) точки */
+.point-item.selected {
+  cursor: grab;
+  background-color: #ffffff;
+  border-left: 3px solid #3b82f6; /* Синяя полоска слева */
+  padding-left: calc(0.75rem - 3px);
+}
+.point-item.selected:hover {
+    background-color: #eff6ff; /* Голубой ховер */
 }
 
 .point-name {
-  font-weight: 500;
-  display: block; /* Для корректного отображения с ID ниже */
+  flex-grow: 1;
+  padding: 0 0.75rem;
+  color: #334155;
+  font-size: 0.95rem;
 }
 
-.point-id {
-  font-size: 0.75rem;
-  color: #777;
+.point-order {
+  font-weight: 600;
+  color: #64748b;
+  min-width: 25px; /* Чтобы точки не прыгали при > 9 */
 }
 
-.selected-point-item .point-info {
-  margin-left: 0.5rem; /* Небольшой отступ после кнопок порядка */
-}
-
-.point-order-controls {
-  display: flex;
-  flex-direction: column; /* Кнопки вверх/вниз одна под другой */
-  gap: 0.25rem;
-  margin-right: 0.5rem;
-}
-.point-order-controls .button-base {
-    padding: 0.2rem 0.4rem; /* Маленькие кнопки */
-    min-width: auto;
-}
-
-
-/* Адаптивность для колонок, если нужно */
-@media (max-width: 768px) {
-  .points-columns-container {
-    flex-direction: column;
-  }
+.point-item-empty {
+    padding: 2rem;
+    text-align: center;
+    color: #94a3b8;
+    font-style: italic;
 }

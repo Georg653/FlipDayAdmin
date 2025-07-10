@@ -1,145 +1,117 @@
-// src/hooks/admin/StoriesManagement/useStoriesManagement.ts
+// --- Путь: src/hooks/admin/Stories/useStoriesManagement.ts ---
+
 import { useState, useEffect, useCallback } from 'react';
-import type { Story, StoryFilterParams } from '../../../types/admin/Stories/story.types'; // Убедись, что все типы импортированы с 'type' если нужно
+import type { Story } from '../../../types/admin/Stories/story.types';
 import { StoriesApi } from '../../../services/admin/Stories/storiesApi';
-import { ITEMS_PER_PAGE_STORIES } from '../../../constants/admin/Stories/stories.constants';
-// import { useNotification } from '../../../contexts/admin/NotificationContext'; // Раскомментируй, если используешь
+
+const ITEMS_PER_PAGE = 10;
 
 export const useStoriesManagement = () => {
-  // const { showNotification } = useNotification();
-
   const [stories, setStories] = useState<Story[]>([]);
-  const [loading, setLoading] = useState(true); // Начальное состояние true для первой загрузки
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = ITEMS_PER_PAGE_STORIES;
-  const [canLoadMore, setCanLoadMore] = useState(false);
-
-  // null - все, true - активные, false - неактивные
-  const [filterIsActive, setFilterIsActive] = useState<boolean | null>(null);
-
+  const [hasNextPage, setHasNextPage] = useState(false);
+  const [activeFilter, setActiveFilter] = useState<boolean | undefined>(undefined);
   const [showForm, setShowForm] = useState(false);
   const [storyToEdit, setStoryToEdit] = useState<Story | null>(null);
 
-  console.log('[useStoriesManagement] Hook state:', { loading, error, currentPage, filterIsActive, storiesCount: stories.length });
-
-  const fetchStories = useCallback(async (pageToFetch: number, currentFilterValue: boolean | null) => {
-    console.log(`[useStoriesManagement] fetchStories called. Page: ${pageToFetch}, Filter: ${currentFilterValue}`);
-    setLoading(true); // Устанавливаем loading перед запросом
+  // 1. Возвращаемся к нормальной постраничной загрузке (убираем limit=1000)
+  const fetchStories = useCallback(async (page: number, isActive?: boolean) => {
+    setLoading(true);
     setError(null);
     try {
-      const params: StoryFilterParams = {
-        offset: (pageToFetch - 1) * itemsPerPage,
-        limit: itemsPerPage,
-        is_active: currentFilterValue,
-      };
-      console.log('[useStoriesManagement] Fetching with params:', params);
-      const responseStories = await StoriesApi.getStories(params);
-      
-      console.log('[useStoriesManagement] API response stories:', responseStories);
-      setStories(responseStories || []); // Гарантируем, что это массив
-      setCanLoadMore(responseStories && responseStories.length === itemsPerPage);
-
+      const data = await StoriesApi.getStories({
+        offset: (page - 1) * ITEMS_PER_PAGE,
+        limit: ITEMS_PER_PAGE,
+        is_active: isActive, // Мы по-прежнему отправляем этот параметр
+      });
+      setStories(data);
+      setHasNextPage(data.length === ITEMS_PER_PAGE);
     } catch (err: any) {
-      let message = 'Не удалось загрузить истории.';
-      if (err.code === 'ERR_NETWORK') {
-        message = 'Сетевая ошибка. Проверьте CORS на бэкенде или доступность сервера.';
-      } else if (err.response && err.response.data && err.response.data.detail) {
-        message = typeof err.response.data.detail === 'string' ? err.response.data.detail : JSON.stringify(err.response.data.detail);
-      } else if (err.message) {
-        message = err.message;
+      // 2. Делаем обработку ошибок НАДЕЖНОЙ
+      // Превращаем любую ошибку в строку, чтобы React не падал
+      let errorMessage = 'Ошибка загрузки историй.';
+      if (err.response?.data?.detail) {
+        const detail = err.response.data.detail;
+        // Если detail - это объект или массив, превращаем его в JSON-строку
+        if (typeof detail === 'object') {
+          errorMessage = JSON.stringify(detail, null, 2); // null, 2 для красивого вывода
+        } else {
+          errorMessage = String(detail);
+        }
       }
-      setError(message);
-      // showNotification?.(message, 'error');
-      console.error("[useStoriesManagement] Error fetching stories:", message, err);
-      setStories([]); // Очищаем истории при ошибке
-      setCanLoadMore(false);
+      setError(errorMessage);
+      setStories([]); // Гарантируем, что stories - это пустой массив
     } finally {
-      console.log('[useStoriesManagement] fetchStories finished. Setting loading to false.');
       setLoading(false);
     }
-  }, [itemsPerPage]); // Убрал filterIsActive из зависимостей useCallback, т.к. он передается как параметр
-
-  // Загрузка при монтировании и при смене страницы или фильтра
-  useEffect(() => {
-    console.log(`[useStoriesManagement] useEffect triggered. CurrentPage: ${currentPage}, FilterIsActive: ${filterIsActive}`);
-    fetchStories(currentPage, filterIsActive);
-  }, [currentPage, filterIsActive, fetchStories]);
-
-
-  const handleIsActiveFilterChange = useCallback((value: string) => {
-    console.log(`[useStoriesManagement] Filter changed to: ${value}`);
-    let newFilterValue: boolean | null = null;
-    if (value === "true") {
-      newFilterValue = true;
-    } else if (value === "false") {
-      newFilterValue = false;
-    }
-    // Немедленно устанавливаем фильтр и сбрасываем на первую страницу
-    // Эти изменения вызовут useEffect выше, который вызовет fetchStories
-    setCurrentPage(1); 
-    setFilterIsActive(newFilterValue);
   }, []);
 
-  const handleEdit = useCallback((story: Story) => {
+  useEffect(() => {
+    fetchStories(currentPage, activeFilter);
+  }, [currentPage, activeFilter, fetchStories]);
+  
+  const handleEdit = (story: Story) => {
     setStoryToEdit(story);
     setShowForm(true);
-  }, []);
+  };
 
-  const handleShowAddForm = useCallback(() => {
+  const handleShowAddForm = () => {
     setStoryToEdit(null);
     setShowForm(true);
-  }, []);
+  };
 
   const handleDelete = async (id: number) => {
-    // eslint-disable-next-line no-restricted-globals
-    if (!confirm('Вы уверены, что хотите удалить эту историю?')) {
-      return;
-    }
-    setError(null);
-    // setLoading(true); // Можно сделать локальный лоадер для кнопки удаления
+    if (!window.confirm('Вы уверены, что хотите удалить эту историю?')) return;
+    const originalStories = [...stories];
+    setStories(stories.filter(s => s.id !== id));
     try {
       await StoriesApi.deleteStory(id);
-      // showNotification?.('История успешно удалена!', 'success');
-      console.log('История успешно удалена!');
-      // Перезагружаем текущую страницу с текущим фильтром
-      fetchStories(currentPage, filterIsActive); 
     } catch (err: any) {
-      const message = err.response?.data?.detail || 'Не удалось удалить историю.';
-      // showNotification?.(message, 'error');
-      console.error("[useStoriesManagement] Error deleting story:", message, err);
-      setError(message);
-    } finally {
-      // setLoading(false);
+      setError('Ошибка удаления.');
+      setStories(originalStories);
     }
   };
 
-  const handleFormSuccess = useCallback(() => {
+  const handleFormSuccess = (updatedStory: Story) => {
     setShowForm(false);
     setStoryToEdit(null);
-    // После успеха, лучше перезапросить первую страницу с текущим фильтром
-    // чтобы увидеть новую/обновленную историю в правильном порядке
-    setCurrentPage(1); 
-    fetchStories(1, filterIsActive);
-  }, [fetchStories, filterIsActive]);
-
-  const handleCancelForm = useCallback(() => {
-    setShowForm(false);
-    setStoryToEdit(null);
-  }, []);
-
-  const handlePreviousPage = useCallback(() => {
-    if (currentPage > 1) {
-      setCurrentPage(prevPage => prevPage - 1);
+    if (storyToEdit) {
+      setStories(stories.map(s => s.id === updatedStory.id ? updatedStory : s));
+    } else {
+      if(currentPage === 1) {
+        setStories([updatedStory, ...stories].slice(0, ITEMS_PER_PAGE));
+      } else {
+        setCurrentPage(1);
+      }
     }
-  }, [currentPage]);
+  };
 
-  const handleNextPage = useCallback(() => {
-    if (canLoadMore) {
-      setCurrentPage(prevPage => prevPage + 1);
+  const handleFilterChange = (isActive: boolean | undefined) => {
+    setActiveFilter(isActive);
+    setCurrentPage(1);
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) setCurrentPage(p => p - 1);
+  };
+
+  const handleNextPage = () => {
+    if (hasNextPage) setCurrentPage(p => p + 1);
+  };
+
+  const handleToggleStatus = async (story: Story) => {
+    const newStatus = !story.is_active;
+    const originalStory = { ...story };
+    setStories(prevStories => prevStories.map(s => s.id === story.id ? { ...s, is_active: newStatus } : s));
+    try {
+      await StoriesApi.updateStoryStatus(originalStory, newStatus);
+    } catch (err: any) {
+      setError(`Ошибка изменения статуса для истории ID ${story.id}`);
+      setStories(prevStories => prevStories.map(s => s.id === story.id ? originalStory : s));
     }
-  }, [canLoadMore]);
+  };
 
   return {
     stories,
@@ -148,16 +120,17 @@ export const useStoriesManagement = () => {
     currentPage,
     handlePreviousPage,
     handleNextPage,
-    canLoadMore,
-    filterIsActive,
-    handleIsActiveFilterChange,
+    canGoNext: hasNextPage,
+    canGoPrevious: currentPage > 1,
     handleEdit,
     handleShowAddForm,
     handleDelete,
     handleFormSuccess,
-    handleCancelForm,
     showForm,
     setShowForm,
     storyToEdit,
+    activeFilter,
+    handleFilterChange,
+    handleToggleStatus,
   };
 };

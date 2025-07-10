@@ -1,237 +1,162 @@
-// src/hooks/admin/News/useNewsForm.ts
-import { useState, useEffect, useCallback } from 'react';
+// --- Путь: src/hooks/admin/News/useNewsForm.ts ---
+
+import { useState, useEffect } from 'react';
 import type {
-  NewsItem,
-  NewsCreatePayload,
-  NewsUpdatePayload,
-  NewsFormData,
-  NewsFormOptions,
-  ContentBlock,
+  News, NewsFormData, ContentBlock, ContentBlockFormData, NewsCreateUpdatePayload, TestOption
 } from '../../../types/admin/News/news.types';
-import { initialNewsFormData } from '../../../types/admin/News/news.types';
 import { NewsApi } from '../../../services/admin/News/newsApi';
-import { v4 as uuidv4 } from 'uuid';
+import { createImageUrl } from '../../../utils/media';
 
-export const useNewsForm = (options: NewsFormOptions) => {
-  const { onSuccess, newsItemToEdit } = options;
+// Функция для создания пустого блока нужного типа
+const createInitialBlock = (type: ContentBlockFormData['type']): ContentBlockFormData => {
+  const id = crypto.randomUUID();
+  switch (type) {
+    case 'text': return { id, type, content: '' };
+    case 'heading': return { id, type, content: '', level: 2 };
+    case 'image': return { id, type, src: '', file: null };
+    case 'video': return { id, type, src: '', file: null };
+    case 'audio': return { id, type, src: '', file: null };
+    case 'album': return { id, type, items: [] };
+    case 'slider': return { id, type, items: [] };
+    case 'test': return { id, type, question: '', options: [{id: crypto.randomUUID(), text: '', isCorrect: true}], message: '' };
+    default: throw new Error(`Неизвестный тип блока: ${type}`);
+  }
+};
 
+const initialNewsFormData: NewsFormData = {
+  title: '', description: '', preview_url: null, preview_file: null, remove_preview: false,
+  background_url: null, background_file: null, remove_background: false,
+  content: [createInitialBlock('text')],
+};
+
+interface UseNewsFormOptions {
+  newsToEdit: News | null;
+  onSuccess: (newsItem: News) => void;
+}
+
+export const useNewsForm = ({ newsToEdit, onSuccess }: UseNewsFormOptions) => {
   const [formData, setFormData] = useState<NewsFormData>(initialNewsFormData);
-  const [formError, setFormError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const [isBlockModalOpen, setIsBlockModalOpen] = useState(false);
-  const [editingBlock, setEditingBlock] = useState<ContentBlock | null>(null);
-  const [editingBlockIndex, setEditingBlockIndex] = useState<number | null>(null); // Состояние для индекса
-
-  const resetForm = useCallback(() => {
-    setFormData(initialNewsFormData);
-    setFormError(null);
-    setIsBlockModalOpen(false);
-    setEditingBlock(null);
-    setEditingBlockIndex(null);
-  }, []);
-
+  // Эффект для заполнения формы при редактировании
   useEffect(() => {
-    if (newsItemToEdit) {
-      setFormData({
-        title: newsItemToEdit.title,
-        description: newsItemToEdit.description,
-        content: (newsItemToEdit.content || []).map(block => ({ ...block, __id: block.id || uuidv4() })),
-        preview_file: null,
-        preview_url_manual: newsItemToEdit.preview || "",
-        existing_preview_url: newsItemToEdit.preview,
+    if (newsToEdit) {
+      const contentForForm: ContentBlockFormData[] = newsToEdit.content.map((apiBlock: ContentBlock) => {
+        const baseBlock: ContentBlockFormData = { ...apiBlock, id: crypto.randomUUID(), file: null };
+        
+        // --- ИСПРАВЛЕНИЕ: Правильно обрабатываем album и slider ---
+        if (apiBlock.type === 'album' || apiBlock.type === 'slider') {
+          // 'src' в API это массив строк, а в форме 'items' это массив объектов
+          baseBlock.items = (apiBlock.src || []).map((url: string) => ({
+            id: crypto.randomUUID(),
+            url: url,
+            file: null,
+            preview: createImageUrl(url),
+          }));
+          delete (baseBlock as any).src; // Удаляем старое поле src, чтобы не было конфликта
+        }
+        
+        return baseBlock;
       });
-      setFormError(null);
+
+      setFormData({
+        title: newsToEdit.title,
+        description: newsToEdit.description,
+        preview_url: newsToEdit.preview,
+        preview_file: null,
+        remove_preview: false,
+        background_url: newsToEdit.background,
+        background_file: null,
+        remove_background: false,
+        content: contentForForm,
+      });
     } else {
-      resetForm();
+      setFormData(initialNewsFormData);
     }
-  }, [newsItemToEdit, resetForm]);
+  }, [newsToEdit]);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value, }));
-    if (formError) setFormError(null);
+
+  // --- Хендлеры формы ---
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  const handleFileChange = (field: 'preview_file' | 'background_file', file: File | null) => setFormData(prev => ({ ...prev, [field]: file }));
+  const handleRemoveImage = (field: 'remove_preview' | 'remove_background', checked: boolean) => setFormData(prev => ({ ...prev, [field]: checked }));
+  const addBlock = (type: ContentBlockFormData['type'], index: number) => {
+    const newContent = [...formData.content];
+    newContent.splice(index + 1, 0, createInitialBlock(type));
+    setFormData(prev => ({ ...prev, content: newContent }));
   };
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    setFormData((prev) => ({
-      ...prev,
-      preview_file: file,
-      preview_url_manual: file ? "" : prev.preview_url_manual,
-    }));
-    if (formError) setFormError(null);
-  };
-
-  const handleAddBlock = () => {
-    setEditingBlock({ type: 'text', content: '', __id: uuidv4() });
-    setEditingBlockIndex(null);
-    setIsBlockModalOpen(true);
-  };
-
-  const handleEditBlock = (index: number) => {
-    const blockToEdit = formData.content[index];
-    setEditingBlock({ ...blockToEdit });
-    setEditingBlockIndex(index);
-    setIsBlockModalOpen(true);
-  };
-
-  const handleDeleteBlock = (index: number) => {
-    if (window.confirm('Удалить этот блок контента?')) {
-      setFormData(prev => ({
-        ...prev,
-        content: prev.content.filter((_, i) => i !== index),
-      }));
-    }
-  };
-
-  const handleSaveBlock = (blockData: ContentBlock) => {
-    setFormData(prev => {
-      const newContent = [...prev.content];
-      if (editingBlockIndex !== null) {
-        newContent[editingBlockIndex] = blockData;
-      } else {
-        newContent.push({ ...blockData, __id: blockData.__id || uuidv4() });
-      }
-      return { ...prev, content: newContent };
-    });
-    setIsBlockModalOpen(false);
-    setEditingBlock(null);
-    setEditingBlockIndex(null);
-  };
-
-  const handleCloseBlockModal = () => {
-    setIsBlockModalOpen(false);
-    setEditingBlock(null);
-    setEditingBlockIndex(null);
-  };
-  
-  const moveBlock = (index: number, direction: 'up' | 'down') => {
-    const newBlocks = [...formData.content];
-    const block = newBlocks[index];
-    const newIndex = direction === 'up' ? index - 1 : index + 1;
-
-    if (newIndex < 0 || newIndex >= newBlocks.length) return;
-
-    newBlocks.splice(index, 1);
-    newBlocks.splice(newIndex, 0, block);
-    setFormData(prev => ({ ...prev, content: newBlocks }));
+  const removeBlock = (id: string) => setFormData(prev => ({ ...prev, content: prev.content.filter(block => block.id !== id) }));
+  const updateBlock = (id: string, newBlockData: Partial<ContentBlockFormData>) => setFormData(prev => ({ ...prev, content: prev.content.map(block => (block.id === id ? { ...block, ...newBlockData } : block)) }));
+  const moveBlock = (fromIndex: number, toIndex: number) => {
+    const newContent = [...formData.content];
+    const [movedItem] = newContent.splice(fromIndex, 1);
+    newContent.splice(toIndex, 0, movedItem);
+    setFormData(prev => ({ ...prev, content: newContent }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setFormError(null);
-
-    if (!formData.title.trim()) {
-      setFormError('Заголовок новости обязателен.');
-      setIsSubmitting(false);
-      return;
-    }
-    
-    const contentForApi: ContentBlock[] = [];
-    for (const block of formData.content) {
-        const { __id, ...restOfBlock } = block;
-        if (restOfBlock.type === 'heading' && (!restOfBlock.level || !restOfBlock.content)) {
-            setFormError(`Блок "${restOfBlock.type}" (ID: ${__id || 'новый'}) не заполнен корректно (нужны level и content).`);
-            setIsSubmitting(false);
-            return;
-        }
-        if (restOfBlock.type === 'text' && !restOfBlock.content) {
-            setFormError(`Блок "${restOfBlock.type}" (ID: ${__id || 'новый'}) не заполнен корректно (нужен content).`);
-            setIsSubmitting(false);
-            return;
-        }
-        contentForApi.push(restOfBlock as ContentBlock);
+    if (!formData.title.trim() || !formData.description.trim()) {
+      setFormError('Заголовок и Описание не могут быть пустыми.');
+      setIsSubmitting(false); return;
     }
 
-    const newsDataPayload: NewsCreatePayload = {
-      title: formData.title.trim(),
-      description: formData.description.trim(),
-      content: contentForApi,
+    const payloadContent: ContentBlock[] = formData.content.map(formBlock => {
+      switch (formBlock.type) {
+        case 'text': return { type: 'text', content: formBlock.content || '' };
+        case 'heading': return { type: 'heading', content: formBlock.content || '', level: formBlock.level || 2 };
+        case 'image': case 'video': case 'audio':
+            return { type: formBlock.type, src: formBlock.file ? '' : formBlock.src || null };
+        case 'album': case 'slider':
+          const apiItems = (formBlock.items || []).map(item => (item.file ? '' : item.url || '')).filter(Boolean);
+          return { type: formBlock.type, src: apiItems };
+        case 'test':
+            const options: TestOption[] = (formBlock.options || []).map(({id, text}) => ({id, text}));
+            return { type: 'test', question: formBlock.question || '', options, message: formBlock.message || '' };
+        default: return null;
+      }
+    }).filter((b): b is ContentBlock => b !== null);
+
+    const payload: NewsCreateUpdatePayload = {
+      title: formData.title, description: formData.description, content: payloadContent,
+      preview_url: formData.preview_file ? null : formData.preview_url,
+      background_url: formData.background_file ? null : formData.background_url,
     };
-
-    if (!formData.preview_file && formData.preview_url_manual.trim()) {
-      newsDataPayload.preview = formData.preview_url_manual.trim();
-    }
+    
+    const contentFiles: File[] = [];
+    formData.content.forEach(block => {
+      if (block.file) contentFiles.push(block.file);
+      if (block.items) {
+        block.items.forEach(item => { if (item.file) contentFiles.push(item.file); });
+      }
+    });
 
     try {
-      let result: NewsItem;
-      const isEditing = !!newsItemToEdit;
-
-      if (isEditing && newsItemToEdit) {
-        const updatePayload: NewsUpdatePayload = {};
-        if (formData.title.trim() !== newsItemToEdit.title) updatePayload.title = formData.title.trim();
-        if (formData.description.trim() !== newsItemToEdit.description) updatePayload.description = formData.description.trim();
-        
-        const oldContentForApi = (newsItemToEdit.content || []).map(({ __id, ...rest }) => rest);
-        const oldContentString = JSON.stringify(oldContentForApi);
-        const newContentString = JSON.stringify(contentForApi);
-
-        if (oldContentString !== newContentString) {
-          updatePayload.content = contentForApi;
-        }
-
-        if (!formData.preview_file && formData.preview_url_manual.trim() && formData.preview_url_manual.trim() !== (newsItemToEdit.preview || "")) {
-            (updatePayload as NewsCreatePayload).preview = formData.preview_url_manual.trim();
-        }
-        
-        if (Object.keys(updatePayload).length > 0 || formData.preview_file) {
-            result = await NewsApi.updateNewsItem(
-              newsItemToEdit.id,
-              updatePayload,
-              formData.preview_file
-            );
-        } else {
-            result = newsItemToEdit; 
-        }
-        console.log('Новость успешно обновлена!');
-      } else {
-        if (!formData.preview_file && formData.preview_url_manual.trim()) {
-            newsDataPayload.preview = formData.preview_url_manual.trim();
-        }
-        result = await NewsApi.createNewsItem(
-          newsDataPayload,
-          formData.preview_file
+      let result: News;
+      if (newsToEdit) {
+        result = await NewsApi.updateNews(
+          newsToEdit.id, payload, formData.preview_file, formData.background_file, contentFiles,
+          formData.remove_preview, formData.remove_background
         );
-        console.log('Новость успешно создана!');
+      } else {
+        result = await NewsApi.createNews(
+          payload, formData.preview_file, formData.background_file, contentFiles
+        );
       }
-      onSuccess?.(result);
-    } catch (error: any) {
-      console.error("Ошибка сохранения новости:", error);
-      const message = error.response?.data?.detail || `Не удалось ${newsItemToEdit ? 'обновить' : 'создать'} новость.`;
-      let errorMessage = "Произошла неизвестная ошибка.";
-
-      if (typeof message === 'string') {
-        errorMessage = message;
-      } else if (Array.isArray(message)) {
-        errorMessage = message.map(err => `${err.loc?.join('.') || 'поле'} - ${err.msg}`).join('; ');
-      }
-      console.error(errorMessage);
-      setFormError(errorMessage);
+      onSuccess(result);
+    } catch (err: any) {
+      const detail = err.response?.data?.detail;
+      setFormError(typeof detail === 'object' ? JSON.stringify(detail, null, 2) : detail || 'Произошла ошибка.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return {
-    formData,
-    handleChange,
-    handleFileChange,
-    handleSubmit,
-    isSubmitting,
-    formError,
-    resetForm,
-    isBlockModalOpen,
-    editingBlock,
-    editingBlockIndex, // <--- УБЕДИСЬ, ЧТО ОН ЗДЕСЬ ЕСТЬ
-    handleAddBlock,
-    handleEditBlock,
-    handleDeleteBlock,
-    handleSaveBlock,
-    handleCloseBlockModal,
-    moveBlock,
+    formData, setFormData, isSubmitting, formError, handleChange, handleFileChange,
+    handleRemoveImage, addBlock, removeBlock, updateBlock, moveBlock, handleSubmit,
   };
 };

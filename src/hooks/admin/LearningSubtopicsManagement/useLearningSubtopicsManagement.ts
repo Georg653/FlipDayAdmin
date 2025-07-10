@@ -1,175 +1,161 @@
-// src/hooks/admin/LearningSubtopicsManagement/useLearningSubtopicsManagement.ts
+// --- Путь: src/hooks/admin/LearningSubtopicsManagement/useLearningSubtopicsManagement.ts ---
+// ИСПРАВЛЕННАЯ ВЕРСИЯ
+
 import { useState, useEffect, useCallback } from 'react';
-import type {
-  LearningSubtopic,
-  LearningSubtopicFilterParams,
-} from '../../../types/admin/LearningSubtopics/learningSubtopic.types';
-import type { TopicOption as LearningTopicOptionForSelect } from '../../../types/admin/LearningTopics/learningTopic.types';
+import type { LearningSubtopic, TopicOption } from '../../../types/admin/LearningSubtopics/learningSubtopic.types';
 import { LearningSubtopicsApi } from '../../../services/admin/LearningSubtopics/learningSubtopicsApi';
-import { ITEMS_PER_PAGE_LEARNING_SUBTOPICS } from '../../../constants/admin/LearningSubtopics/learningSubtopics.constants';
+
+const ITEMS_PER_PAGE = 10;
 
 export const useLearningSubtopicsManagement = () => {
-  const [learningSubtopics, setLearningSubtopics] = useState<LearningSubtopic[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null); // Убедимся, что это всегда строка
+  const [topics, setTopics] = useState<TopicOption[]>([]);
+  const [topicsLoading, setTopicsLoading] = useState(true);
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+
+  const [subtopics, setSubtopics] = useState<LearningSubtopic[]>([]);
+  const [subtopicsLoading, setSubtopicsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const [itemsPerPage, setItemsPerPage] = useState(ITEMS_PER_PAGE_LEARNING_SUBTOPICS);
-  const [currentTopicId, setCurrentTopicId] = useState<number | null>(null);
-  const [topicOptions, setTopicOptions] = useState<LearningTopicOptionForSelect[]>([]);
-  const [loadingTopics, setLoadingTopics] = useState<boolean>(false);
+  const [hasNextPage, setHasNextPage] = useState(false);
+
   const [showForm, setShowForm] = useState(false);
-  const [learningSubtopicToEdit, setLearningSubtopicToEdit] = useState<LearningSubtopic | null>(null);
-  const [topicIdForForm, setTopicIdForForm] = useState<number | null>(null);
+  const [subtopicToEdit, setSubtopicToEdit] = useState<LearningSubtopic | null>(null);
 
-  const parseErrorMessage = (err: any, defaultMessage: string): string => {
-    const detail = err.response?.data?.detail;
-    if (Array.isArray(detail)) {
-      return detail.map((e: any) => `${e.loc?.join('->') || 'field'}: ${e.msg}`).join('; ');
-    }
-    return String(detail || defaultMessage);
-  };
-
-  const fetchTopics = useCallback(async () => {
-    setLoadingTopics(true);
-    setError(null);
-    try {
-      const response = await LearningSubtopicsApi.getTopics(); // Убрали параметры
-      setTopicOptions(response.items);
-    } catch (err: any) {
-      const errorMessage = parseErrorMessage(err, 'Не удалось загрузить список тем.');
-      console.error("Failed to load topics for select:", errorMessage, err);
-      setError(errorMessage);
-      setTopicOptions([]);
-    } finally {
-      setLoadingTopics(false);
-    }
-  }, []);
-
+  // 1. Загрузка списка тем
   useEffect(() => {
+    const fetchTopics = async () => {
+      setTopicsLoading(true);
+      setError(null);
+      try {
+        const data = await LearningSubtopicsApi.getAllTopics();
+        const formattedTopics = data.map(t => ({ value: String(t.id), label: t.name }));
+        setTopics(formattedTopics);
+        // Если темы загрузились, устанавливаем первую как выбранную по умолчанию
+        if (data.length > 0) {
+          setSelectedTopicId(String(data[0].id));
+        }
+      } catch (err) {
+        setError('Ошибка загрузки списка тем.');
+      } finally {
+        setTopicsLoading(false);
+      }
+    };
     fetchTopics();
-  }, [fetchTopics]);
+  }, []);
 
-  const fetchLearningSubtopics = useCallback(async () => {
-    if (!currentTopicId) {
-      setLearningSubtopics([]);
-      setTotalItems(0);
-      setError("Пожалуйста, выберите тему для отображения подтем.");
-      return;
-    }
-    setLoading(true);
+  // 2. Функция для загрузки подтем
+  const fetchSubtopics = useCallback(async (topicId: number, page: number) => {
+    setSubtopicsLoading(true);
     setError(null);
+    setSubtopics([]); // Очищаем старые подтемы перед загрузкой новых
     try {
-      const params: LearningSubtopicFilterParams = {
-        offset: (currentPage - 1) * itemsPerPage,
-        limit: itemsPerPage,
-      };
-      const response = await LearningSubtopicsApi.getLearningSubtopicsForTopic(currentTopicId, params);
-      setLearningSubtopics(response.items);
-      if (response.items.length < itemsPerPage) {
-        setTotalItems((currentPage - 1) * itemsPerPage + response.items.length);
-      } else {
-        setTotalItems(currentPage * itemsPerPage + 1); 
-      }
-      if (response.items.length === 0 && currentPage === 1) {
-          setTotalItems(0);
-      }
+      const data = await LearningSubtopicsApi.getSubtopicsByTopicId(topicId, {
+        offset: (page - 1) * ITEMS_PER_PAGE,
+        limit: ITEMS_PER_PAGE,
+      });
+      setSubtopics(data);
+      setHasNextPage(data.length === ITEMS_PER_PAGE);
     } catch (err: any) {
-      let errorMessage = parseErrorMessage(err, 'Не удалось загрузить подтемы.');
-      if (err.response?.status === 404 && typeof err.response?.data?.detail === 'string' && err.response.data.detail.includes("Topic with id")) {
-        errorMessage = `Тема с ID ${currentTopicId} не найдена или не содержит подтем.`;
+      let errorMessage = 'Ошибка загрузки подтем.';
+      if (err.response?.data?.detail) {
+        errorMessage = JSON.stringify(err.response.data.detail);
       }
       setError(errorMessage);
-      setLearningSubtopics([]);
-      setTotalItems(0);
     } finally {
-      setLoading(false);
+      setSubtopicsLoading(false);
     }
-  }, [currentTopicId, currentPage, itemsPerPage]);
+  }, []);
 
+  // 3. Эффект, который реагирует на смену selectedTopicId
   useEffect(() => {
-    if (currentTopicId) {
-      fetchLearningSubtopics();
+    // Если ID темы выбран (не null и не пустая строка)
+    if (selectedTopicId) {
+      // При смене темы всегда сбрасываем на 1-ю страницу
+      setCurrentPage(1);
+      fetchSubtopics(Number(selectedTopicId), 1);
     } else {
-      setLearningSubtopics([]);
-      setTotalItems(0);
-      if (topicOptions.length > 0) {
-        setError("Пожалуйста, выберите тему для отображения подтем.");
-      } else if (!loadingTopics && error === null) { // Если темы не грузятся и нет другой ошибки
-        // setError("Список тем пуст или не удалось загрузить."); // Можно добавить это, если fetchTopics завершился без ошибок, но список пуст
-      }
+      // Если тема не выбрана (например, после удаления всех тем), очищаем список
+      setSubtopics([]);
     }
-  }, [currentTopicId, fetchLearningSubtopics, topicOptions.length, loadingTopics, error]); // Добавил error в зависимости
+  }, [selectedTopicId, fetchSubtopics]);
 
-  const handleTopicChange = (topicIdString: string) => {
-    const id = parseInt(topicIdString, 10);
-    setCurrentTopicId(isNaN(id) || id <= 0 ? null : id);
-    setCurrentPage(1);
-    setError(null);
-  };
-
-  const handleEdit = useCallback((subtopic: LearningSubtopic) => {
-    setLearningSubtopicToEdit(subtopic);
-    setTopicIdForForm(subtopic.topic_id);
-    setShowForm(true);
-  }, []);
-
-  const handleShowAddForm = useCallback(() => {
-    if (!currentTopicId) {
-      alert("Сначала выберите тему!");
-      setError("Сначала выберите тему, для которой хотите создать подтему.");
-      return;
+  // 4. Эффект, который реагирует на смену страницы (но не темы!)
+  useEffect(() => {
+    // Этот эффект сработает только при изменении currentPage, если это не первая страница
+    // (первую загружает эффект выше)
+    if (selectedTopicId && currentPage > 1) {
+      fetchSubtopics(Number(selectedTopicId), currentPage);
     }
-    setLearningSubtopicToEdit(null);
-    setTopicIdForForm(currentTopicId);
-    setShowForm(true);
-  }, [currentTopicId]);
-
-  const handleDelete = async (id: number) => {
-    if (!confirm('Вы уверены, что хотите удалить эту подтему?')) return;
-    setError(null);
-    try {
-      await LearningSubtopicsApi.deleteLearningSubtopic(id);
-      if (learningSubtopics.length === 1 && currentPage > 1) {
-        setCurrentPage(prev => prev - 1);
-      } else {
-        fetchLearningSubtopics();
-      }
-    } catch (err: any) {
-      const errorMessage = parseErrorMessage(err, 'Не удалось удалить подтему.');
-      setError(errorMessage);
-    }
-  };
-
-  const handleFormSuccess = useCallback(() => {
-    setShowForm(false);
-    setLearningSubtopicToEdit(null);
-    setTopicIdForForm(null);
-    fetchLearningSubtopics();
-  }, [fetchLearningSubtopics]);
-
-  const handleCancelForm = useCallback(() => {
-    setShowForm(false);
-    setLearningSubtopicToEdit(null);
-    setTopicIdForForm(null);
-  }, []);
-
-  const handlePreviousPage = useCallback(() => {
-    if (currentPage > 1) setCurrentPage(prev => prev - 1);
   }, [currentPage]);
 
-  const handleNextPage = useCallback(() => {
-    const totalPagesGuess = Math.ceil(totalItems / itemsPerPage);
-    if (currentPage < totalPagesGuess || learningSubtopics.length === itemsPerPage) {
-        setCurrentPage(prev => prev + 1);
+
+  // --- Обработчики ---
+  const handleTopicChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedTopicId(e.target.value);
+    // Теперь нам не нужно здесь вызывать setCurrentPage(1), это сделает useEffect выше
+  };
+
+  // Остальные обработчики (handleEdit, handleDelete и т.д.) остаются без изменений
+  // ... (здесь твой код для handleEdit, handleDelete, handleFormSuccess и т.д.)
+  const handleEdit = (subtopic: LearningSubtopic) => {
+    setSubtopicToEdit(subtopic);
+    setShowForm(true);
+  };
+
+  const handleShowAddForm = () => {
+    if (!selectedTopicId) return;
+    setSubtopicToEdit(null);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Вы уверены, что хотите удалить эту подтему?')) return;
+    
+    const originalSubtopics = [...subtopics];
+    setSubtopics(current => current.filter(st => st.id !== id));
+    
+    try {
+      await LearningSubtopicsApi.deleteSubtopic(id);
+      if (subtopics.length === 1 && currentPage > 1) {
+        setCurrentPage(p => p - 1);
+      } else if (subtopics.length === 1 && currentPage === 1) {
+        // Если удалили последний элемент на первой странице, перезагружаем
+        fetchSubtopics(Number(selectedTopicId), 1);
+      }
+    } catch (err: any) {
+      setError('Ошибка удаления подтемы.');
+      setSubtopics(originalSubtopics);
     }
-  }, [currentPage, totalItems, itemsPerPage, learningSubtopics.length]);
+  };
+  
+  const handleFormSuccess = (updatedSubtopic: LearningSubtopic) => {
+    setShowForm(false);
+    setSubtopicToEdit(null);
+    
+    if (String(updatedSubtopic.topic_id) === selectedTopicId) {
+        fetchSubtopics(Number(selectedTopicId), currentPage);
+    } else {
+      setSelectedTopicId(String(updatedSubtopic.topic_id));
+      // setCurrentPage(1) вызовется автоматически эффектом
+    }
+  };
+
+  const handlePreviousPage = () => {
+    if (currentPage > 1) setCurrentPage(p => p - 1);
+  };
+  const handleNextPage = () => {
+    if (hasNextPage) setCurrentPage(p => p + 1);
+  };
+
+  const isLoading = topicsLoading || subtopicsLoading;
 
   return {
-    learningSubtopics, loading, error, currentPage, setCurrentPage, totalItems, itemsPerPage,
-    setItemsPerPage, handlePreviousPage, handleNextPage, currentTopicId,
-    setCurrentTopicId: handleTopicChange, topicOptions, loadingTopics,
-    handleEdit, handleShowAddForm, handleDelete, handleFormSuccess, handleCancelForm,
-    showForm, setShowForm, learningSubtopicToEdit, topicIdForForm,
+    topics, selectedTopicId, handleTopicChange, subtopics, error,
+    isLoading, handleEdit, handleDelete, handleShowAddForm, handleFormSuccess,
+    showForm, setShowForm, subtopicToEdit, currentPage,
+    canGoNext: hasNextPage, canGoPrevious: currentPage > 1,
+    handleNextPage, handlePreviousPage,
+    parentTopicId: selectedTopicId ? Number(selectedTopicId) : null,
   };
 };

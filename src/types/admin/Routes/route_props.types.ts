@@ -1,46 +1,11 @@
-// src/types/admin/Routes/route_props.types.ts
-import type { 
-    Route, 
-    RouteFormData, 
-    RoutePointInfo, 
-    SelectablePoint,
-    RouteCategory // Импортируем RouteCategory
-} from './route.types';
+// --- Путь: src/types/admin/Routes/route_props.types.ts ---
 
-export interface RouteFormProps {
-  formData: RouteFormData;
-  setFormData: React.Dispatch<React.SetStateAction<RouteFormData>>; // Для управления selected_points
-  handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
-  handleCheckboxChange: (name: string, checked: boolean) => void; // для auto_generated
-  handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleSubmit: (e: React.FormEvent) => void;
-  
-  // Пропсы для управления списком точек в маршруте
-  availablePoints: SelectablePoint[]; // Список всех доступных точек для выбора
-  loadingAvailablePoints: boolean;
-  onAddPointToRoute: (pointId: number) => void;
-  onRemovePointFromRoute: (pointId: number) => void;
-  onMovePointInRoute: (pointId: number, direction: 'up' | 'down') => void;
-  // --- Конец пропсов для точек ---
+import type { Route } from './route.types';
+import type { Point } from '../Points/point.types';
+import type { RouteCategory } from '../RouteCategories/routeCategory.types';
 
-  setShowForm: (show: boolean) => void;
-  isSubmitting: boolean;
-  routeToEdit?: Route | null;
-  formError: string | null;
-  routeCategories: Pick<RouteCategory, 'id' | 'name'>[]; // Для селекта категорий
-  loadingRouteCategories: boolean;
-}
 
-export interface RoutesHeaderProps {
-  isLoading: boolean;
-  onShowForm: () => void;
-  filterCategoryId: string | number;
-  onCategoryFilterChange: (value: string) => void; // value из селекта
-  routeCategories: Pick<RouteCategory, 'id' | 'name'>[];
-  loadingRouteCategories: boolean;
-  // filterSearch?: string;
-  // onSearchFilterChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}
+// --- Пропсы для основных компонентов страницы ---
 
 export interface RoutesTableProps {
   routes: Route[];
@@ -48,23 +13,36 @@ export interface RoutesTableProps {
   error: string | null;
   onEdit: (route: Route) => void;
   onDelete: (id: number) => void;
+  // Пагинация
   currentPage: number;
-  handlePreviousPage: () => void;
-  handleNextPage: () => void;
   canGoNext: boolean;
   canGoPrevious: boolean;
-  getCategoryName: (categoryId: number) => string; // Функция для получения имени категории
+  handleNextPage: () => void;
+  handlePreviousPage: () => void;
 }
 
-// Пропсы для компонента выбора/управления точками в маршруте
+export interface RoutesHeaderProps {
+  isLoading: boolean;
+  onShowForm: () => void;
+  // Пропсы для фильтров
+  categoryFilter: string; // ID категории или 'all'
+  onCategoryFilterChange: (value: string) => void;
+  searchFilter: string;
+  onSearchFilterChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  // Список категорий для выпадающего списка
+  categories: RouteCategory[];
+}
+
+export interface RouteFormProps {
+  routeToEdit: Route | null;
+  onSuccess: () => void;
+  onCancel: () => void;
+}
+
+// --- Пропсы для конструктора точек ---
+
 export interface RoutePointsManagerProps {
-    selectedPoints: RoutePointInfo[]; // Точки, уже добавленные в маршрут
-    availablePoints: SelectablePoint[]; // Все точки, доступные для добавления
-    loadingAvailablePoints: boolean;
-    onAddPoint: (pointId: number) => void;
-    onRemovePoint: (pointId: number) => void;
-    onMovePoint: (pointId: number, direction: 'up' | 'down') => void;
-    // Возможно, строка поиска для фильтрации availablePoints
-    // searchTerm: string;
-    // onSearchTermChange: (term: string) => void;
+    allPoints: Point[];       // Все доступные точки
+    selectedPoints: Point[];  // Точки, уже добавленные в маршрут
+    onPointsChange: (newPoints: Point[]) => void; // Колбэк при изменении
 }

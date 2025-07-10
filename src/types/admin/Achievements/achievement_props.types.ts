@@ -1,35 +1,19 @@
 // src/types/admin/Achievements/achievement_props.types.ts
+// Этот файл ТОЛЬКО описывает пропсы для UI-компонентов. Он ничего сам не объявляет.
 
-// src/types/admin/Achievements/achievement_props.types.ts
-import type { Achievement, AchievementFormData } from './achievement.types';
+import type { Achievement } from './achievement.types';
 
-export interface AchievementFormProps {
-  formData: AchievementFormData;
-  handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
-  handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleSubmit: (e: React.FormEvent) => void;
-  setShowForm: (show: boolean) => void;
-  isSubmitting: boolean;
-  achievementToEdit?: Achievement | null;
-  formError: string | null;
-}
-
-export interface AchievementsHeaderProps {
-  isLoading: boolean;
-  onShowForm: () => void;
-  // filterNameInput?: string;
-  // onNameFilterChange?: (e: React.ChangeEvent<HTMLInputElement>) => void;
-}
-
+// Пропсы для компонента ТАБЛИЦЫ
 export interface AchievementsTableProps {
   achievements: Achievement[];
   isLoading: boolean;
   error: string | null;
   onEdit: (achievement: Achievement) => void;
   onDelete: (id: number) => void;
-  currentPage: number;
-  totalItems: number;
-  itemsPerPage: number;
-  handlePreviousPage: () => void;
-  handleNextPage: () => void;
+}
+
+// Пропсы для компонента ХЕДЕРА
+export interface AchievementsHeaderProps {
+  isLoading: boolean;
+  onShowForm: () => void;
 }

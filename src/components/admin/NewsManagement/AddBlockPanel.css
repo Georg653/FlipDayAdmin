@@ -1,0 +1,23 @@
+/* --- Путь: src/components/admin/NewsManagement/AddBlockPanel.css --- */
+
+.add-block-panel {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  padding: 0.75rem 1rem;
+  border: 1px dashed #cbd5e1;
+  border-radius: 8px;
+  margin-top: 1rem;
+  background-color: #f8fafc;
+}
+
+.add-block-panel-title {
+  font-weight: 500;
+  color: #475569;
+}
+
+.add-block-buttons {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+}

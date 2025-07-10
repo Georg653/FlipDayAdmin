@@ -1,83 +1,73 @@
-// src/types/admin/LearningTopics/learningTopic.types.ts
+// --- Путь: src/types/admin/LearningTopics/learningTopic.types.ts ---
 
-// Структура Темы Обучения, как она приходит с API и как мы ее знаем из структуры БД
+// Тип, описывающий данные, как они приходят с бэкенда (из LearningTopicResponse)
 export interface LearningTopic {
   id: number;
   name: string;
   description: string | null;
   experience_points: number;
-  image: string | null; // URL изображения (может быть как внутренним, так и внешним, если API поддерживает)
   order: number;
-  completion_percentage?: number;
-  created_at?: string; // Добавим, если API возвращает
-  updated_at?: string; // Добавим, если API возвращает
+  image: string | null; // S3 ключ или URL
 }
 
-// Данные для JSON-строки в поле 'data_json' при создании Темы
-export interface LearningTopicCreatePayload {
-  name: string;
-  description?: string | null;
-  experience_points: number;
-  order: number;
-  image_url?: string | null; // <<<--- НОВОЕ ПОЛЕ: для передачи URL изображения, если не загружается файл
-                             // Название 'image_url' выбрано для ясности, что это URL.
-                             // Бэкенд должен его обработать (скачать или сохранить как есть).
-}
+// =============================================================================
+// ТИПЫ ДЛЯ ФОРМЫ (то, с чем мы работаем на фронте в useLearningTopicForm)
+// =============================================================================
 
-// Данные для JSON-строки в поле 'data_json' при обновлении Темы
-export type LearningTopicUpdatePayload = Partial<LearningTopicCreatePayload>;
-// image_url также будет опциональным и может использоваться для обновления/удаления ссылки на изображение.
-
-
-// Структура данных для формы создания/редактирования Темы
 export interface LearningTopicFormData {
   name: string;
   description: string;
-  experience_points: string;
-  order: string;
-  
-  image_file: File | null;            // Для загрузки файла
-  image_url_manual: string;         // <<<--- НОВОЕ ПОЛЕ: для ввода URL вручную
+  experience_points: string; // В инпутах всегда строки для удобства
+  order: string;             // В инпутах всегда строки для удобства
 
-  image_preview_url?: string | null; // Для отображения превью в ImageUpload (из файла или URL)
-  existing_image_url?: string | null;// Для отображения существующей картинки при редактировании
+  image_url: string | null;       // Существующий URL/S3-ключ для превью
+  image_file: File | null;        // Новый файл для превью
+  image_local_url: string | null; // Локальный URL для превью (URL.createObjectURL)
+  remove_image: boolean;          // Флаг для удаления изображения
 }
 
-// Начальное состояние для данных формы LearningTopic
+// Начальное состояние для формы
 export const initialLearningTopicFormData: LearningTopicFormData = {
-  name: "",
-  description: "",
-  experience_points: "0",
-  order: "0",
+  name: '',
+  description: '',
+  experience_points: '10', // Дефолтное значение
+  order: '0',              // Дефолтное значение
+  image_url: null,
   image_file: null,
-  image_url_manual: "", // <<<--- НОВОЕ ПОЛЕ: инициализируем пустой строкой
-  image_preview_url: null,
-  existing_image_url: null,
+  image_local_url: null,
+  remove_image: false,
 };
 
-// Опции для хука useLearningTopicForm
-export interface LearningTopicFormOptions {
-  onSuccess?: (learningTopic: LearningTopic) => void;
-  learningTopicToEdit?: LearningTopic | null;
+
+// =============================================================================
+// ТИПЫ ДЛЯ PAYLOAD (то, что мы сериализуем в JSON и отправляем на бэк)
+// =============================================================================
+
+// Payload для создания (все поля обязательны, кроме image_url)
+export interface LearningTopicCreatePayload {
+  name: string;
+  description: string | null;
+  experience_points: number;
+  order: number;
+  image_url: string | null; // Отправляем только если не загружаем файл
 }
 
-// Ответ API на запрос списка Тем
-export interface PaginatedLearningTopicsResponse {
-  items: LearningTopic[];
-  total: number; 
-  limit?: number;
-  offset?: number;
+// Payload для обновления (все поля опциональны)
+export interface LearningTopicUpdatePayload {
+  name?: string;
+  description?: string | null;
+  experience_points?: number;
+  order?: number;
+  image_url?: string | null;
 }
 
-// Параметры фильтрации для списка Тем
+// =============================================================================
+// ВСПОМОГАТЕЛЬНЫЕ ТИПЫ
+// =============================================================================
+
+// Параметры для фильтрации списка тем (пока только пагинация)
 export interface LearningTopicFilterParams {
   limit?: number;
   offset?: number;
-  name?: string;
-}
-
-// Тип для опций селекта
-export interface TopicOption {
-  id: number;
-  name: string;
+  // Можно будет добавить name?: string; если на бэке появится фильтр по названию
 }

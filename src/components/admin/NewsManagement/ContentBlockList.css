@@ -1,49 +1,68 @@
-/* src/components/admin/NewsManagement/ContentBlockList.css */
-.content-block-list {
-  margin-top: 1rem;
-  border: 1px solid #e0e0e0;
-  border-radius: 4px;
-}
+/* --- Путь: src/components/admin/NewsManagement/ContentBlockForm.css --- */
 
-.content-block-list-empty {
+.content-block-form {
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #ffffff;
   padding: 1rem;
-  text-align: center;
-  color: #777;
+  box-shadow: 0 1px 3px 0 rgba(0,0,0,0.1), 0 1px 2px 0 rgba(0,0,0,0.06);
 }
-
-.content-block-item {
+.block-header {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.75rem 1rem;
-  border-bottom: 1px solid #e0e0e0;
+  margin-bottom: 1rem;
+  padding-bottom: 0.75rem;
+  border-bottom: 1px solid #f1f5f9;
 }
-.content-block-item:last-child {
-  border-bottom: none;
-}
-
-.content-block-item-preview {
-  flex-grow: 1;
-  margin-right: 1rem;
-  font-size: 0.9rem;
-  color: #333;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-.block-type-badge {
-  background-color: #f0f0f0;
-  color: #555;
-  padding: 0.2em 0.5em;
-  border-radius: 3px;
-  font-size: 0.75rem;
-  margin-right: 0.5rem;
+.block-title {
+  font-weight: 600;
   text-transform: capitalize;
+  color: #334155;
 }
-
-
-.content-block-item-actions {
+.block-controls {
   display: flex;
   gap: 0.5rem;
+}
+.block-fields {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+.heading-editor {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.heading-editor .form-group {
+  flex-grow: 0;
+}
+
+/* --- НОВЫЕ СТИЛИ ДЛЯ АЛЬБОМА/СЛАЙДЕРА --- */
+.collection-editor {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  border-top: 1px solid #f1f5f9;
+  padding-top: 1rem;
+}
+.collection-items-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+  gap: 1rem;
+}
+.collection-item {
+  position: relative;
+  border: 1px solid #e2e8f0;
+  border-radius: 6px;
+  overflow: hidden;
+}
+.collection-item .image-upload-preview-area {
+    height: 120px; /* Фиксируем высоту для красоты */
+}
+.collection-item-delete {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  z-index: 10;
 }

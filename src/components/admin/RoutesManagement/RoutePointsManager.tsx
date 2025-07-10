@@ -1,106 +1,97 @@
-// src/components/admin/RoutesManagement/RoutePointsManager.tsx
-import React, { useState } from 'react';
-import type { RoutePointInfo, SelectablePoint } from '../../../types/admin/Routes/route.types';
-import { Button } from '../../ui/Button/Button';
+// --- Путь: src/components/admin/RoutesManagement/RoutePointsManager.tsx ---
+
+import React, { useState, useMemo } from 'react';
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import type { DropResult } from '@hello-pangea/dnd';
+import type { RoutePointsManagerProps } from '../../../types/admin/Routes/route_props.types';
+import type { Point } from '../../../types/admin/Points/point.types';
 import { Input } from '../../ui/Input/Input';
+import { Button } from '../../ui/Button/Button';
 import './RoutePointsManager.css';
 
-interface RoutePointsManagerProps {
-  selectedPoints: RoutePointInfo[];
-  availablePoints: SelectablePoint[];
-  loadingAvailablePoints: boolean;
-  onAddPoint: (pointId: number) => void;
-  onRemovePoint: (pointId: number) => void;
-  onMovePoint: (pointId: number, direction: 'up' | 'down') => void;
-}
-
-// УБЕДИСЬ, ЧТО ЗДЕСЬ ЕСТЬ 'export const'
 export const RoutePointsManager: React.FC<RoutePointsManagerProps> = ({
+  allPoints,
   selectedPoints,
-  availablePoints,
-  loadingAvailablePoints,
-  onAddPoint,
-  onRemovePoint,
-  onMovePoint,
+  onPointsChange,
 }) => {
-  const [searchTerm, setSearchTerm] = useState('');
+  const [search, setSearch] = useState('');
 
-  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setSearchTerm(e.target.value.toLowerCase());
+  // Фильтруем список всех точек, исключая уже выбранные
+  const availablePoints = useMemo(() => {
+    const selectedIds = new Set(selectedPoints.map(p => p.id));
+    return allPoints
+      .filter(p => !selectedIds.has(p.id))
+      .filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
+  }, [allPoints, selectedPoints, search]);
+
+  const handleAddPoint = (point: Point) => {
+    onPointsChange([...selectedPoints, point]);
   };
 
-  const filteredAvailablePoints = availablePoints.filter(point => 
-    point.name.toLowerCase().includes(searchTerm) && 
-    !selectedPoints.find(sp => sp.id === point.id)
-  );
+  const handleRemovePoint = (pointId: number) => {
+    onPointsChange(selectedPoints.filter(p => p.id !== pointId));
+  };
+  
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    const items = Array.from(selectedPoints);
+    const [reorderedItem] = items.splice(result.source.index, 1);
+    items.splice(result.destination.index, 0, reorderedItem);
+    onPointsChange(items);
+  };
 
   return (
-    <div className="route-points-manager">
-      <div className="points-columns-container">
-        {/* Колонка доступных точек */}
-        <div className="points-column available-points-column">
-          <h5>Доступные точки для добавления</h5>
-          <Input
-            type="search"
-            placeholder="Поиск точек..."
-            value={searchTerm}
-            onChange={handleSearchChange}
-            style={{ marginBottom: '10px' }}
-          />
-          {loadingAvailablePoints ? (
-            <p>Загрузка точек...</p>
-          ) : filteredAvailablePoints.length > 0 ? (
-            <ul className="points-list">
-              {filteredAvailablePoints.map((point) => (
-                <li key={point.id} className="point-list-item">
-                  <div className="point-info">
-                    <span className="point-name">{point.name}</span>
-                    <small className="point-id">(ID: {point.id})</small>
-                  </div>
-                  <Button onClick={() => onAddPoint(point.id)} size="sm" variant="outline">
-                    Добавить →
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>Нет доступных точек (или все уже добавлены/отфильтрованы).</p>
-          )}
-        </div>
+    <div className="points-manager">
+      {/* --- ЛЕВАЯ КОЛОНКА: ВСЕ ДОСТУПНЫЕ ТОЧКИ --- */}
+      <div className="points-column">
+        <h5 className="points-column-title">Доступные точки</h5>
+        <Input
+          type="text"
+          placeholder="Поиск по названию..."
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          className="points-search-input"
+        />
+        <ul className="points-list">
+          {availablePoints.map(point => (
+            <li key={point.id} className="point-item available">
+              <span className="point-name">{point.name}</span>
+              <Button size="sm" variant="outline" onClick={() => handleAddPoint(point)}>Добавить →</Button>
+            </li>
+          ))}
+          {availablePoints.length === 0 && <li className="point-item-empty">Нет доступных точек</li>}
+        </ul>
+      </div>
 
-        {/* Колонка выбранных точек */}
-        <div className="points-column selected-points-column">
-          <h5>Точки в маршруте (порядок важен)</h5>
-          {selectedPoints.length > 0 ? (
-            <ul className="points-list selected-points-draggable-list">
-              {selectedPoints.map((point, index) => (
-                <li key={point.__id || point.id} className="point-list-item selected-point-item">
-                  <div className="point-order-controls">
-                    <Button 
-                        onClick={() => onMovePoint(point.id, 'up')} 
-                        disabled={index === 0} 
-                        size="sm" variant="outline" 
-                        title="Вверх">↑</Button>
-                    <Button 
-                        onClick={() => onMovePoint(point.id, 'down')} 
-                        disabled={index === selectedPoints.length - 1} 
-                        size="sm" variant="outline" 
-                        title="Вниз">↓</Button>
-                  </div>
-                  <div className="point-info">
-                    <span className="point-name">{index + 1}. {point.name}</span>
-                    <small className="point-id">(ID: {point.id})</small>
-                  </div>
-                  <Button onClick={() => onRemovePoint(point.id)} size="sm" variant="destructive">
-                    Удалить
-                  </Button>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p>Нет точек в маршруте. Добавьте из списка слева.</p>
-          )}
-        </div>
+      {/* --- ПРАВАЯ КОЛОНКА: ВЫБРАННЫЕ ТОЧКИ (С DRAG-AND-DROP) --- */}
+      <div className="points-column">
+        <h5 className="points-column-title">Точки в маршруте ({selectedPoints.length})</h5>
+        <DragDropContext onDragEnd={onDragEnd}>
+          <Droppable droppableId="selected-points">
+            {(provided) => (
+              <ul {...provided.droppableProps} ref={provided.innerRef} className="points-list selected">
+                {selectedPoints.map((point, index) => (
+                  <Draggable key={point.id} draggableId={String(point.id)} index={index}>
+                    {(provided) => (
+                      <li
+                        ref={provided.innerRef}
+                        {...provided.draggableProps}
+                        {...provided.dragHandleProps}
+                        className="point-item selected"
+                      >
+                        <span className="point-order">{index + 1}.</span>
+                        <span className="point-name">{point.name}</span>
+                        <Button size="sm" variant="destructive" onClick={() => handleRemovePoint(point.id)}>×</Button>
+                      </li>
+                    )}
+                  </Draggable>
+                ))}
+                {provided.placeholder}
+                 {selectedPoints.length === 0 && <li className="point-item-empty">Перетащите или добавьте точки сюда</li>}
+              </ul>
+            )}
+          </Droppable>
+        </DragDropContext>
       </div>
     </div>
   );

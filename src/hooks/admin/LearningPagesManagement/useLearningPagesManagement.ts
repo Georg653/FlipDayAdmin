@@ -1,221 +1,215 @@
-// src/hooks/admin/LearningPagesManagement/useLearningPagesManagement.ts
+// --- Путь: src/hooks/admin/LearningPagesManagement/useLearningPagesManagement.ts ---
+
 import { useState, useEffect, useCallback } from 'react';
-import type {
+import type { 
   LearningPage,
-  LearningPageFilterParams,
-  // PaginatedLearningPagesResponse, // API не возвращает эту структуру для списка
-  // SubtopicOption, // Если будет API для подтем
+  TopicOption,
+  SubtopicOption
 } from '../../../types/admin/LearningPages/learningPage.types';
 import { LearningPagesApi } from '../../../services/admin/LearningPages/learningPagesApi';
-import { ITEMS_PER_PAGE_LEARNING_PAGES } from '../../../constants/admin/LearningPages/learningPages.constants';
-// import { useNotification } from '../../../contexts/admin/NotificationContext';
-// import { useDebounce } from '../Other/useDebounce';
+import { LearningSubtopicsApi } from '../../../services/admin/LearningSubtopics/learningSubtopicsApi'; // Для получения списка подтем
+import { LearningTopicsApi } from '../../../services/admin/LearningTopics/learningTopicsApi'; // Для получения списка тем
+
+const ITEMS_PER_PAGE = 10;
 
 export const useLearningPagesManagement = () => {
-  // const { showNotification } = useNotification();
+  // Состояние для выбора темы
+  const [topics, setTopics] = useState<TopicOption[]>([]);
+  const [selectedTopicId, setSelectedTopicId] = useState<string | null>(null);
+  const [topicsLoading, setTopicsLoading] = useState(true);
 
-  const [learningPages, setLearningPages] = useState<LearningPage[]>([]);
-  const [loading, setLoading] = useState(false);
+  // Состояние для выбора подтемы
+  const [subtopics, setSubtopics] = useState<SubtopicOption[]>([]);
+  const [selectedSubtopicId, setSelectedSubtopicId] = useState<string | null>(null);
+  const [subtopicsLoading, setSubtopicsLoading] = useState(false);
+
+  // Состояние для страниц
+  const [pages, setPages] = useState<LearningPage[]>([]);
+  const [pagesLoading, setPagesLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
+  
+  // Пагинация для страниц
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalItems, setTotalItems] = useState(0); // Это будет проблемой, см. ниже
-  const [itemsPerPage, setItemsPerPage] = useState(ITEMS_PER_PAGE_LEARNING_PAGES);
+  const [hasNextPage, setHasNextPage] = useState(false);
 
-  // Состояние для выбранного/введенного subtopic_id
-  const [currentSubtopicId, setCurrentSubtopicId] = useState<number | null>(null);
-  // const [subtopicOptions, setSubtopicOptions] = useState<SubtopicOption[]>([]); // Для селекта
-  // const [loadingSubtopics, setLoadingSubtopics] = useState(false);
-
+  // Состояние для модального окна и редактирования
   const [showForm, setShowForm] = useState(false);
-  const [learningPageToEdit, setLearningPageToEdit] = useState<LearningPage | null>(null);
-  // Для передачи subtopic_id в форму при редактировании или создании в контексте подтемы
-  const [subtopicIdForForm, setSubtopicIdForForm] = useState<number | null>(null);
+  const [pageToEdit, setPageToEdit] = useState<LearningPage | null>(null);
 
-
-  // Загрузка списка подтем (если будет API)
-  /*
-  const fetchSubtopics = useCallback(async () => {
-    setLoadingSubtopics(true);
-    try {
-      const response = await LearningPagesApi.getSubtopics({ limit: 1000 }); // Загружаем много
-      setSubtopicOptions(response.items);
-      if (response.items.length > 0 && !currentSubtopicId) {
-        // setCurrentSubtopicId(response.items[0].id); // Выбрать первую подтему по умолчанию
-      }
-    } catch (err) {
-      console.error("Failed to load subtopics", err);
-      // showNotification?.('Failed to load subtopics.', 'error');
-    } finally {
-      setLoadingSubtopics(false);
-    }
-  }, [currentSubtopicId]);
-
+  // 1. Загрузка списка всех тем при монтировании компонента
   useEffect(() => {
-    // fetchSubtopics();
-  }, [fetchSubtopics]);
-  */
-
-  const fetchLearningPages = useCallback(async () => {
-    if (!currentSubtopicId) {
-      setLearningPages([]);
-      setTotalItems(0);
-      setError("Пожалуйста, выберите или введите ID подтемы.");
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-    try {
-      const params: LearningPageFilterParams = {
-        offset: (currentPage - 1) * itemsPerPage,
-        limit: itemsPerPage,
-      };
-      // API возвращает PaginatedLearningPagesResponse, где total - это заглушка
-      const response = await LearningPagesApi.getLearningPagesForSubtopic(currentSubtopicId, params);
-      setLearningPages(response.items);
-      
-      // ВАЖНО: API не возвращает реальный total.
-      // Если response.items.length < itemsPerPage, это может быть последняя страница.
-      // Если response.items.length === itemsPerPage, может быть еще.
-      // Без total от API, пагинация будет неточной.
-      // Пока что, если пришло меньше, чем itemsPerPage, считаем, что это все.
-      // Если пришло ровно itemsPerPage, предполагаем, что может быть еще одна страница.
-      if (response.items.length < itemsPerPage) {
-        setTotalItems((currentPage - 1) * itemsPerPage + response.items.length);
-      } else {
-        // Это лишь догадка, что есть еще одна страница.
-        setTotalItems(currentPage * itemsPerPage + 1); 
+    const fetchAllTopics = async () => {
+      setTopicsLoading(true);
+      setError(null);
+      try {
+        const data = await LearningTopicsApi.getTopics({ limit: 1000 }); // Получаем все темы
+        const formattedTopics = data.map(t => ({ value: String(t.id), label: t.name }));
+        setTopics(formattedTopics);
+        if (formattedTopics.length > 0) {
+          setSelectedTopicId(formattedTopics[0].value); // Автоматически выбираем первую тему
+        } else {
+          setSelectedTopicId(null); // Если тем нет, сбрасываем выбор
+        }
+      } catch (err) {
+        setError('Ошибка загрузки списка тем.');
+        setTopics([]);
+        setSelectedTopicId(null);
+      } finally {
+        setTopicsLoading(false);
       }
-      if (response.items.length === 0 && currentPage === 1) {
-          setTotalItems(0);
-      }
-
-
-    } catch (err: any) {
-      const message = err.response?.data?.detail || 'Не удалось загрузить страницы обучения.';
-      if (err.response?.status === 404 && err.response?.data?.detail?.includes("Subtopic")) {
-        setError(`Подтема с ID ${currentSubtopicId} не найдена.`);
-      } else {
-        setError(message);
-      }
-      // showNotification?.(message, 'error');
-      console.error(message, err);
-      setLearningPages([]);
-      setTotalItems(0);
-    } finally {
-      setLoading(false);
-    }
-  }, [currentSubtopicId, currentPage, itemsPerPage]);
-
-  useEffect(() => {
-    // Загружаем страницы только если выбран subtopic_id
-    if (currentSubtopicId) {
-      fetchLearningPages();
-    } else {
-      setLearningPages([]); // Очищаем, если subtopic_id не выбран
-      setTotalItems(0);
-    }
-  }, [currentSubtopicId, fetchLearningPages]); // Перезагрузка при смене subtopic_id
-
-  const handleSubtopicChange = (subtopicIdString: string) => {
-    const id = parseInt(subtopicIdString, 10);
-    setCurrentSubtopicId(isNaN(id) || id <= 0 ? null : id);
-    setCurrentPage(1); // Сброс на первую страницу при смене подтемы
-    setError(null);
-  };
-
-  const handleEdit = useCallback((page: LearningPage) => {
-    setLearningPageToEdit(page);
-    setSubtopicIdForForm(currentSubtopicId); // Передаем текущий subtopic_id в форму
-    setShowForm(true);
-  }, [currentSubtopicId]);
-
-  const handleShowAddForm = useCallback(() => {
-    if (!currentSubtopicId) {
-        // showNotification?.("Сначала выберите подтему!", "warning");
-        alert("Сначала выберите или введите ID подтемы!");
-        setError("Сначала выберите или введите ID подтемы, для которой хотите создать страницу.");
-        return;
-    }
-    setLearningPageToEdit(null);
-    setSubtopicIdForForm(currentSubtopicId); // Передаем текущий subtopic_id в форму
-    setShowForm(true);
-  }, [currentSubtopicId]);
-
-  const handleDelete = async (id: number) => {
-    // eslint-disable-next-line no-restricted-globals
-    if (!confirm('Вы уверены, что хотите удалить эту страницу обучения?')) {
-      return;
-    }
-    setError(null);
-    try {
-      await LearningPagesApi.deleteLearningPage(id);
-      // showNotification?.('Страница обучения успешно удалена!', 'success');
-      console.log('Страница обучения успешно удалена!');
-      if (learningPages.length === 1 && currentPage > 1) {
-        setCurrentPage(prevPage => prevPage - 1);
-      } else {
-        fetchLearningPages();
-      }
-    } catch (err: any) {
-      const message = err.response?.data?.detail || 'Не удалось удалить страницу обучения.';
-      // showNotification?.(message, 'error');
-      console.error(message, err);
-      setError(message);
-    }
-  };
-
-  const handleFormSuccess = useCallback(() => {
-    setShowForm(false);
-    setLearningPageToEdit(null);
-    setSubtopicIdForForm(null);
-    fetchLearningPages();
-  }, [fetchLearningPages]);
-
-  const handleCancelForm = useCallback(() => {
-    setShowForm(false);
-    setLearningPageToEdit(null);
-    setSubtopicIdForForm(null);
+    };
+    fetchAllTopics();
   }, []);
 
-  const handlePreviousPage = useCallback(() => {
-    if (currentPage > 1) {
-      setCurrentPage(prevPage => prevPage - 1);
-    }
-  }, [currentPage]);
+  // 2. Загрузка списка подтем при изменении выбранной темы
+  useEffect(() => {
+    const fetchSubtopicsForSelectedTopic = async () => {
+      if (!selectedTopicId) {
+        setSubtopics([]);
+        setSelectedSubtopicId(null);
+        return;
+      }
+      setSubtopicsLoading(true);
+      setError(null);
+      try {
+        const data = await LearningSubtopicsApi.getSubtopicsByTopicId(Number(selectedTopicId), { limit: 1000 }); // Получаем все подтемы для выбранной темы
+        const formattedSubtopics = data.map(st => ({ value: String(st.id), label: st.name }));
+        setSubtopics(formattedSubtopics);
+        if (formattedSubtopics.length > 0) {
+          setSelectedSubtopicId(formattedSubtopics[0].value); // Автоматически выбираем первую подтему
+        } else {
+          setSelectedSubtopicId(null); // Если подтем нет, сбрасываем выбор
+        }
+      } catch (err) {
+        setError('Ошибка загрузки списка подтем.');
+        setSubtopics([]);
+        setSelectedSubtopicId(null);
+      } finally {
+        setSubtopicsLoading(false);
+      }
+    };
+    fetchSubtopicsForSelectedTopic();
+  }, [selectedTopicId]); // Зависит от выбранной темы
 
-  const handleNextPage = useCallback(() => {
-    // Логика для totalItems здесь будет неточной
-    const totalPagesGuess = Math.ceil(totalItems / itemsPerPage);
-    if (currentPage < totalPagesGuess || learningPages.length === itemsPerPage) { // Если набрали полную страницу, предполагаем что есть следующая
-        setCurrentPage(prevPage => prevPage + 1);
+  // 3. Загрузка списка страниц при изменении выбранной подтемы или страницы пагинации
+  const fetchPagesForSelectedSubtopic = useCallback(async (subtopicId: number, page: number) => {
+    setPagesLoading(true);
+    setError(null);
+    setPages([]); // Очищаем список перед загрузкой
+    try {
+      const data = await LearningPagesApi.getPagesBySubtopicId(subtopicId, {
+        offset: (page - 1) * ITEMS_PER_PAGE,
+        limit: ITEMS_PER_PAGE,
+      });
+      setPages(data);
+      setHasNextPage(data.length === ITEMS_PER_PAGE);
+    } catch (err: any) {
+      let errorMessage = 'Ошибка загрузки страниц.';
+      if (err.response?.data?.detail) {
+        errorMessage = JSON.stringify(err.response.data.detail);
+      }
+      setError(errorMessage);
+      setPages([]);
+    } finally {
+      setPagesLoading(false);
     }
-  }, [currentPage, totalItems, itemsPerPage, learningPages.length]);
+  }, []);
+
+  useEffect(() => {
+    // Этот эффект запускается при изменении selectedSubtopicId или currentPage
+    if (selectedSubtopicId) {
+      // При смене подтемы всегда сбрасываем на 1-ю страницу
+      if (currentPage !== 1) { // Чтобы избежать двойного вызова при первом рендере
+        setCurrentPage(1);
+      } else {
+        fetchPagesForSelectedSubtopic(Number(selectedSubtopicId), currentPage);
+      }
+    } else {
+      setPages([]); // Если подтема не выбрана, страниц нет
+    }
+  }, [selectedSubtopicId, currentPage, fetchPagesForSelectedSubtopic]);
+
+  // --- Обработчики изменения выбора ---
+  const handleTopicChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedTopicId(e.target.value);
+    setSelectedSubtopicId(null); // Сбрасываем подтему при смене темы
+    setCurrentPage(1); // Сбрасываем пагинацию
+  };
+
+  const handleSubtopicChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setSelectedSubtopicId(e.target.value);
+    setCurrentPage(1); // Сбрасываем пагинацию
+  };
+
+  // --- Обработчики действий со страницами ---
+  const handleEdit = (page: LearningPage) => {
+    setPageToEdit(page);
+    setShowForm(true);
+  };
+
+  const handleShowAddForm = () => {
+    if (!selectedSubtopicId) return; // Защита, кнопка и так будет disabled
+    setPageToEdit(null);
+    setShowForm(true);
+  };
+
+  const handleDelete = async (id: number) => {
+    if (!window.confirm('Вы уверены, что хотите удалить эту страницу?')) return;
+    
+    const originalPages = [...pages];
+    setPages(current => current.filter(p => p.id !== id));
+    
+    try {
+      await LearningPagesApi.deletePage(id);
+      // После удаления перезагружаем страницы для текущей подтемы
+      if (selectedSubtopicId) {
+        fetchPagesForSelectedSubtopic(Number(selectedSubtopicId), currentPage);
+      }
+    } catch (err: any) {
+      setError('Ошибка удаления страницы.');
+      setPages(originalPages); // Откат состояния
+    }
+  };
+
+  const handleFormSuccess = (updatedPage: LearningPage) => {
+    setShowForm(false);
+    setPageToEdit(null);
+    
+    // Если страница принадлежит текущей выбранной подтеме, обновляем список.
+    // Иначе (если страница перемещена), переключаемся на новую подтему.
+    if (String(updatedPage.subtopic_id) === selectedSubtopicId) {
+        fetchPagesForSelectedSubtopic(Number(selectedSubtopicId), currentPage);
+    } else {
+        // Переключиться на подтему, к которой теперь принадлежит страница
+        setSelectedSubtopicId(String(updatedPage.subtopic_id));
+        // При этом selectedTopicId тоже нужно будет обновить, если подтема переехала в другую тему.
+        // Это более сложный кейс, который может быть решен путем поиска родительской темы для updatedPage.subtopic_id
+        // или простой перезагрузкой всего (но это неэффективно).
+        // Пока оставим так: пользователь увидит, что страница исчезла из текущей подтемы и может выбрать другую.
+        // Более сложное решение: найти topic_id для updatedPage.subtopic_id и обновить selectedTopicId.
+    }
+  };
+
+  // --- Обработчики пагинации ---
+  const handlePreviousPage = () => {
+    if (currentPage > 1) setCurrentPage(p => p - 1);
+  };
+  const handleNextPage = () => {
+    if (hasNextPage) setCurrentPage(p => p + 1);
+  };
+  
+  // Общий флаг загрузки
+  const isLoading = topicsLoading || subtopicsLoading || pagesLoading;
 
   return {
-    learningPages,
-    loading,
-    error,
-    currentPage,
-    setCurrentPage,
-    totalItems,
-    itemsPerPage,
-    setItemsPerPage,
-    handlePreviousPage,
-    handleNextPage,
-    currentSubtopicId,
-    setCurrentSubtopicId: handleSubtopicChange, // Обработчик изменения subtopic_id
-    // subtopicOptions, // Для селекта
-    // loadingSubtopics, // Для селекта
-    handleEdit,
-    handleShowAddForm,
-    handleDelete,
-    handleFormSuccess,
-    handleCancelForm,
-    showForm,
-    setShowForm,
-    learningPageToEdit,
-    subtopicIdForForm, // Передаем в AchievementsManagement для формы
+    topics, selectedTopicId, handleTopicChange, topicsLoading,
+    subtopics, selectedSubtopicId, handleSubtopicChange, subtopicsLoading,
+    pages, error, isLoading,
+    handleEdit, handleDelete, handleShowAddForm, handleFormSuccess,
+    showForm, setShowForm, pageToEdit,
+    currentPage, canGoNext: hasNextPage, canGoPrevious: currentPage > 1,
+    handleNextPage, handlePreviousPage,
+    // ID родительской подтемы для передачи в форму создания
+    parentSubtopicId: selectedSubtopicId ? Number(selectedSubtopicId) : null,
   };
 };

@@ -1,8 +1,7 @@
-// src/pages/admin/StoriesPage/StoriesPage.tsx
+// --- Путь: src/pages/admin/StoriesPage/StoriesPage.tsx ---
+
 import React from 'react';
-// Исправленный путь:
-import { StoriesManagement } from '../../../components/admin/StoriesManagement/StoriesManagement'; 
-// import styles from './StoriesPage.module.css';
+import { StoriesManagement } from '../../../components/admin/StoriesManagement/StoriesManagement';
 
 const StoriesPage: React.FC = () => {
   return (

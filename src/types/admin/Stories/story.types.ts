@@ -1,73 +1,103 @@
-// src/types/admin/Stories/story.types.ts
+// --- Путь: src/types/admin/Stories/story.types.ts ---
 
+// Типы, описывающие данные, как они приходят с бэкенда (из StoryResponse)
 export type StoryContentType = "image" | "video";
 
 export interface StoryContentItem {
-  content: string; // URL для image или video
+  content: string; // URL или S3-ключ
   type: StoryContentType;
+  duration: number; // Бэк не присылает, но мы добавим для формы
 }
 
-// Структура Story как она приходит с API и используется в приложении
 export interface Story {
   id: number;
-  name: string | null; // Может быть null
+  name: string | null;
   is_active: boolean;
-  preview: string; // URL превью
+  preview: string; // URL или S3-ключ
   content_items: StoryContentItem[];
-  viewed?: boolean; // Опционально, т.к. для админки не очень важно
-  expires_at?: string | null; // Дата/время в формате ISO, опционально
-  created_at?: string; // Если API его возвращает (в модели SQLAlchemy есть)
-  updated_at?: string; // Если API его возвращает
+  views: number;
+  created_at: string;
+  expires_at: string | null;
+  viewed: boolean; // В админке всегда false
 }
 
-// Данные, передаваемые в data_json при создании
-export interface StoryCreatePayload {
-  name?: string | null; // Имя опционально
-  is_active: boolean;
-  content_items: StoryContentItem[];
-  expires_at?: string | null; // Дата/время в формате ISO, опционально
+// =============================================================================
+// ТИПЫ ДЛЯ ФОРМЫ (то, с чем мы работаем на фронте)
+// =============================================================================
+
+// Один слайд в нашей форме
+export interface StoryContentItemFormData {
+  id: string; // Уникальный ID для ключа в React (например, uuid)
+  type: StoryContentType;
+  duration: string; // В инпутах всегда строки
+  content_url: string | null; // Существующий URL/S3-ключ
+  content_file: File | null; // Новый файл для загрузки
+  content_preview: string | null; // Локальный URL для превью (URL.createObjectURL)
 }
 
-// Данные, передаваемые в data_json при обновлении (все поля опциональны)
-export type StoryUpdatePayload = Partial<StoryCreatePayload>;
-
-
-// Структура данных для формы
+// Полные данные формы
 export interface StoryFormData {
-  name: string; // В форме сделаем строкой, даже если может быть null
+  name: string;
   is_active: boolean;
-  preview_file: File | null;
-  preview_url?: string | null; // Для отображения текущего/нового превью
-  existing_preview_url?: string | null;
-  content_items: StoryContentItem[];
-  expires_at: string; // В форме дата будет строкой
+  expires_at: string; // В input type="datetime-local" это строка
+  
+  preview_url: string | null;       // Существующий URL/S3-ключ для превью
+  preview_file: File | null;        // Новый файл для превью
+  preview_local_url: string | null; // Локальный URL для превью
+  remove_preview: boolean;          // Флаг для удаления превью
+  
+  content_items: StoryContentItemFormData[]; // Массив слайдов
 }
 
+// Начальное состояние для одного слайда в форме
+export const createInitialStoryContentItem = (): StoryContentItemFormData => ({
+  id: crypto.randomUUID(),
+  type: 'image',
+  duration: '5',
+  content_url: null,
+  content_file: null,
+  content_preview: null,
+});
+
+// Начальное состояние для всей формы
 export const initialStoryFormData: StoryFormData = {
-  name: "",
+  name: '',
   is_active: true,
-  preview_file: null,
+  expires_at: '',
   preview_url: null,
-  existing_preview_url: null,
-  content_items: [],
-  expires_at: "",
+  preview_file: null,
+  preview_local_url: null,
+  remove_preview: false,
+  content_items: [createInitialStoryContentItem()], // Начинаем с одного пустого слайда
 };
 
-export interface StoryFormOptions {
-  onSuccess?: (story: Story) => void;
-  storyToEdit?: Story | null;
+
+// =============================================================================
+// ТИПЫ ДЛЯ PAYLOAD (то, что мы отправляем на бэк в story_data_json)
+// =============================================================================
+
+// Payload для одного слайда, который уходит в JSON
+interface StoryContentItemPayload {
+    content: string; // URL, S3-ключ или ПУСТАЯ СТРОКА, если загружается новый файл
+    type: StoryContentType;
+    duration: number;
 }
 
-// Для списка сторис (API возвращает массив, total мы не получаем)
-export interface PaginatedStoriesResponse {
-  items: Story[];
-  // total: number; // API не возвращает total
-  // limit: number;
-  // offset: number;
+// Payload для создания/обновления
+export interface StoryCreateUpdatePayload {
+    name: string | null;
+    is_active: boolean;
+    expires_at: string | null;
+    content_items: StoryContentItemPayload[];
 }
 
+// =============================================================================
+// ВСПОМОГАТЕЛЬНЫЕ ТИПЫ
+// =============================================================================
+
+// Параметры для фильтрации списка историй
 export interface StoryFilterParams {
-  is_active?: boolean | null; // null для "все"
   limit?: number;
   offset?: number;
+  is_active?: boolean;
 }

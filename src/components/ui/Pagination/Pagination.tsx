@@ -1,7 +1,7 @@
 // src/components/ui/Pagination/Pagination.tsx
 import React from 'react';
 import { Button } from '../Button/Button';
-import '../../../styles/admin/Pagination.css'; // Убедись, что стили подключены
+import './Pagination.css'; // Убедись, что стили подключены
 
 interface PaginationProps {
   currentPage: number;

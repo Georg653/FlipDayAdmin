@@ -1,176 +1,129 @@
-// src/components/admin/PointsManagement/PointForm.tsx
+// --- Путь: src/components/admin/PointsManagement/PointForm.tsx ---
+
 import React from 'react';
-import type { PointFormOptions, Point, PointContentResponse } from '../../../types/admin/Points/point.types'; // Убедимся, что все нужные типы импортированы
+import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
+import type { DropResult } from '@hello-pangea/dnd';
+
 import { usePointForm } from '../../../hooks/admin/Points/usePointForm';
+import type { PointFormProps } from '../../../types/admin/Points/point_props.types';
+import type { ContentBlockFormData } from '../../../types/admin/Points/point.types';
+
+// Переиспользуем UI-компоненты
 import { Button } from '../../ui/Button/Button';
 import { Input } from '../../ui/Input/Input';
 import { Textarea } from '../../ui/TextArea/Textarea';
+import { Checkbox } from '../../ui/Checkbox/Checkbox';
 import { ImageUpload } from '../../ui/ImageUpload/ImageUpload';
-import { Checkbox } from '../../ui/Checkbox/Checkbox'; // Твой компонент Checkbox
-import { ContentBlockFormModal } from './ContentBlockFormModal';
+// Переиспользуем компоненты конструктора из Новостей
+import { ContentBlockForm } from '../NewsManagement/ContentBlockForm';
+import { AddBlockPanel } from '../NewsManagement/AddBlockPanel';
+
 import '../../../styles/admin/ui/Form.css';
+import '../../admin/NewsManagement/NewsForm.css'; // Переиспользуем стили сетки из формы новостей
 
-interface PointFormPropsExtended extends PointFormOptions {
-  setShowForm: (show: boolean) => void;
-}
-
-export const PointForm: React.FC<PointFormPropsExtended> = ({
-  onSuccess,
-  pointToEdit,
-  setShowForm,
-}) => {
+export const PointForm: React.FC<PointFormProps> = ({ pointToEdit, onSuccess, onCancel }) => {
   const {
     formData,
-    // setFormData, // Не используется напрямую здесь, если вся логика в хуке
-    handleChange,
-    handleCheckboxChange, // Теперь с новой сигнатурой (name, checked)
-    handleFileChange,
-    handleSubmit,
+    setFormData,
     isSubmitting,
     formError,
-    resetForm,
-    isBlockModalOpen,
-    editingBlock,
-    handleAddBlock,
-    handleEditBlock,
-    handleDeleteBlock,
-    handleSaveBlock,
-    handleCloseBlockModal,
+    handleChange,
+    handleFileChange,
+    handleRemoveImage,
+    handleSubmit,
+    addBlock,
+    removeBlock,
+    updateBlock,
     moveBlock,
-  } = usePointForm({
-    onSuccess: (data: Point) => {
-      onSuccess?.(data);
-      setShowForm(false);
-      // resetForm(); // resetForm вызывается в usePointForm useEffect при смене pointToEdit на null или при инициализации
-    },
-    pointToEdit
-  });
+  } = usePointForm({ pointToEdit, onSuccess });
 
-  const handleCancel = () => {
-    setShowForm(false);
-    resetForm();
+  const onDragEnd = (result: DropResult) => {
+    if (!result.destination) return;
+    moveBlock(result.source.index, result.destination.index);
   };
 
   return (
-    <>
-      <div className="form-container">
-        <h3 className="form-title">
-          {pointToEdit ? 'Редактировать Точку' : 'Создать Точку'}
-        </h3>
-        {formError && <p className="form-error">{formError}</p>}
-
-        <form onSubmit={handleSubmit}>
-          <div className="form-inputs-grid">
-            <div className="form-column">
-              <h4>Основные данные</h4>
-              <div className="form-group">
-                <label htmlFor="name_point">Название*</label>
-                <Input id="name_point" name="name" value={formData.name} onChange={handleChange} disabled={isSubmitting} required />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="description_point">Описание*</label>
-                <Textarea id="description_point" name="description" value={formData.description} onChange={handleChange} disabled={isSubmitting} rows={3} required />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="latitude_point">Широта*</label>
-                <Input id="latitude_point" name="latitude" type="number" step="any" value={formData.latitude} onChange={handleChange} disabled={isSubmitting} required />
-              </div>
-
-              <div className="form-group">
-                <label htmlFor="longitude_point">Долгота*</label>
-                <Input id="longitude_point" name="longitude" type="number" step="any" value={formData.longitude} onChange={handleChange} disabled={isSubmitting} required />
-              </div>
-              
-              <div className="form-group">
-                <label htmlFor="budget_point">Бюджет (число)</label>
-                <Input id="budget_point" name="budget" type="number" step="any" value={formData.budget} onChange={handleChange} disabled={isSubmitting} />
-              </div>
-
-              <div className="form-group form-group-checkbox">
-                <Checkbox 
-                  id="is_partner_point"
-                  checked={formData.is_partner} 
-                  onChange={(newCheckedState) => handleCheckboxChange('is_partner', newCheckedState)} // <<<--- ИСПРАВЛЕННЫЙ ВЫЗОВ
-                  disabled={isSubmitting}
-                  // label="Партнерская точка?" // Используй этот пропс, если твой Checkbox его отображает
-                />
-                {/* Если твой Checkbox не отображает label, используй этот внешний label: */}
-                <label htmlFor="is_partner_point" style={{ marginLeft: '0.5rem' }}>Партнерская точка?</label>
-              </div>
-
-              <div className="form-group">
-                <ImageUpload
-                  id="image_file_point"
-                  name="image_file"
-                  onChange={handleFileChange}
-                  previewUrl={formData.image_file ? URL.createObjectURL(formData.image_file) : formData.existing_image_url}
-                  existingImageUrl={formData.existing_image_url}
-                  label="Превью-изображение точки"
-                  disabled={isSubmitting}
-                />
-              </div>
-            </div>
-
-            <div className="form-column">
-              <h4>Контент страницы точки</h4>
-              <div className="form-group">
-                <label htmlFor="point_content_background">URL фона для контента (опционально)</label>
-                <Input id="point_content_background" name="point_content_background" value={formData.point_content_background} onChange={handleChange} disabled={isSubmitting} placeholder="https://example.com/background.jpg"/>
-              </div>
-
-              <div className="form-group">
-                <label>Блоки контента:</label>
-                {formData.point_content_blocks.length === 0 && <p style={{fontSize: '0.9em', color: '#666'}}>Пока нет блоков контента.</p>}
-                <ul className="content-blocks-list">
-                  {formData.point_content_blocks.map((block, index) => (
-                    <li key={block.__id || `block-${index}`} className="content-block-item"> {/* Добавил fallback для key */}
-                      <span className="content-block-type">Тип: {block.type}</span>
-                      <div className="content-block-preview">
-                        {block.type === 'heading' && <h4>{block.content?.substring(0,30)}... (Ур. {block.level})</h4>}
-                        {block.type === 'text' && <p>{block.content?.substring(0, 50)}...</p>}
-                        {block.type === 'image' && block.src && <img src={block.src as string} alt="preview" style={{width: '50px', height: 'auto', objectFit: 'cover'}}/>}
-                        {(block.type === 'album' || block.type === 'slider') && block.src && Array.isArray(block.src) && block.src.length > 0 &&
-                         <img src={block.src[0]} alt="preview" style={{width: '50px', height: 'auto', objectFit: 'cover'}}/>
-                        }
-                        {block.type === 'video' && <span>Видео: {block.text || (block.src as string)?.substring(0,30)}...</span>}
-                        {block.type === 'audio' && <span>Аудио: {block.text || (block.src as string)?.substring(0,30)}...</span>}
-                        {block.type === 'test' && <span>Тест: {block.question?.substring(0,30)}...</span>}
-                      </div>
-                      <div className="content-block-actions">
-                        <Button type="button" onClick={() => moveBlock(index, 'up')} disabled={index === 0} size="sm" variant="outline" title="Переместить вверх">↑</Button>
-                        <Button type="button" onClick={() => moveBlock(index, 'down')} disabled={index === formData.point_content_blocks.length - 1} size="sm" variant="outline" title="Переместить вниз">↓</Button>
-                        <Button type="button" onClick={() => handleEditBlock(index)} size="sm" variant="outline" title="Редактировать блок">Ред.</Button>
-                        <Button type="button" onClick={() => handleDeleteBlock(index)} size="sm" variant="destructive" title="Удалить блок">Удал.</Button>
-                      </div>
-                    </li>
-                  ))}
-                </ul>
-                <Button type="button" onClick={handleAddBlock} variant="outline" style={{marginTop: '1rem'}}>
-                  Добавить блок контента
-                </Button>
-              </div>
-            </div>
+    <form onSubmit={handleSubmit} noValidate className="form-container news-form">
+      {formError && <p className="form-error">Ошибка: {formError}</p>}
+      
+      <div className="news-form-grid">
+        {/* --- ЛЕВАЯ КОЛОНКА: Основные настройки точки --- */}
+        <div className="form-column form-column-meta">
+          <h4>Основные данные точки</h4>
+          <div className="form-group">
+            <label htmlFor="name">Название*</label>
+            <Input id="name" name="name" value={formData.name} onChange={handleChange} required disabled={isSubmitting} />
           </div>
-
-          <div className="form-actions">
-            <Button type="submit" disabled={isSubmitting} customVariant="save" variant="success">
-              {isSubmitting ? (pointToEdit ? 'Сохранение...' : 'Создание...') : (pointToEdit ? 'Сохранить изменения' : 'Создать Точку')}
-            </Button>
-            <Button type="button" onClick={handleCancel} disabled={isSubmitting} customVariant="cancel" variant="outline">
-              Отмена
-            </Button>
+          <div className="form-group">
+            <label htmlFor="description">Описание*</label>
+            <Textarea id="description" name="description" value={formData.description} onChange={handleChange} required disabled={isSubmitting} rows={4}/>
           </div>
-        </form>
+           <div className="form-group">
+            <label htmlFor="latitude">Широта (Latitude)*</label>
+            <Input id="latitude" name="latitude" type="number" value={formData.latitude} onChange={handleChange} required disabled={isSubmitting} step="any" />
+          </div>
+           <div className="form-group">
+            <label htmlFor="longitude">Долгота (Longitude)*</label>
+            <Input id="longitude" name="longitude" type="number" value={formData.longitude} onChange={handleChange} required disabled={isSubmitting} step="any" />
+          </div>
+          <div className="form-group">
+            <label htmlFor="budget">Бюджет*</label>
+            <Input id="budget" name="budget" type="number" value={formData.budget} onChange={handleChange} required disabled={isSubmitting} />
+          </div>
+          <div className="form-group">
+            <Checkbox id="is_partner" name="is_partner" label="Партнерская точка" checked={formData.is_partner} onChange={(checked) => setFormData(prev => ({...prev, is_partner: checked}))} disabled={isSubmitting} />
+          </div>
+          <div className="form-group">
+            <ImageUpload
+              id="point_image" name="image_file" label="Основное изображение"
+              onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+              previewUrl={formData.image_file ? URL.createObjectURL(formData.image_file) : formData.image_url}
+              disabled={isSubmitting || formData.remove_image}
+            />
+            {pointToEdit?.image && (
+              <Checkbox id="remove_image" label="Удалить изображение" checked={formData.remove_image} onChange={handleRemoveImage} disabled={isSubmitting}/>
+            )}
+          </div>
+        </div>
+
+        {/* --- ПРАВАЯ КОЛОНКА: Конструктор контента --- */}
+        <div className="form-column form-column-content">
+          <h4>Дополнительный контент</h4>
+          <Checkbox id="has_content" name="has_content" label="Добавить/редактировать контент" checked={formData.has_content} onChange={(checked) => setFormData(prev => ({...prev, has_content: checked}))} disabled={isSubmitting} />
+          
+          {formData.has_content && (
+            <>
+              {pointToEdit?.content_data && (
+                <Checkbox id="remove_content" name="remove_content" label="Полностью удалить контент при сохранении" checked={formData.remove_content} onChange={(checked) => setFormData(prev => ({...prev, remove_content: checked}))} disabled={isSubmitting}/>
+              )}
+              <DragDropContext onDragEnd={onDragEnd}>
+                <Droppable droppableId="content-blocks">
+                  {(provided) => (
+                    <div {...provided.droppableProps} ref={provided.innerRef} className="content-blocks-list">
+                      {formData.content.map((block, index) => (
+                        <Draggable key={block.id} draggableId={block.id} index={index}>
+                          {(provided) => (
+                            <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
+                              <ContentBlockForm block={block} index={index} isSubmitting={isSubmitting} onRemoveBlock={removeBlock} onUpdateBlock={updateBlock} onAddBlock={addBlock} onMoveBlockUp={() => moveBlock(index, index - 1)} onMoveBlockDown={() => moveBlock(index, index + 1)}/>
+                            </div>
+                          )}
+                        </Draggable>
+                      ))}
+                      {provided.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
+              <AddBlockPanel onAddBlock={(type) => addBlock(type, formData.content.length)} />
+            </>
+          )}
+        </div>
       </div>
-
-      <ContentBlockFormModal
-        isOpen={isBlockModalOpen}
-        onClose={handleCloseBlockModal}
-        onSave={handleSaveBlock}
-        initialBlockData={editingBlock}
-      />
-    </>
+      
+      <div className="form-actions">
+        <Button type="submit" disabled={isSubmitting} variant="success">{isSubmitting ? 'Сохранение...' : 'Сохранить'}</Button>
+        <Button type="button" onClick={onCancel} disabled={isSubmitting} variant="outline">Отмена</Button>
+      </div>
+    </form>
   );
 };

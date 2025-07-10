@@ -79,3 +79,17 @@
 .content-block-form .form-group-array-item > *:first-child {
   flex-grow: 1;
 }
+
+/* В Form.css или Input.css / Textarea.css */
+.form-group input[type="text"],
+.form-group input[type="url"],
+.form-group input[type="email"],
+.form-group input[type="password"],
+.form-group input[type="number"],
+.form-group textarea,
+.form-group select { /* Если используешь стандартный select */
+    width: 100%;
+    max-width: 100%; /* Это важно */
+    box-sizing: border-box; /* Очень важно */
+    /* ... твои остальные стили для инпутов ... */
+}

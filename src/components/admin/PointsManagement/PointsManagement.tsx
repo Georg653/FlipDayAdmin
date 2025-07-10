@@ -1,69 +1,56 @@
-// src/components/admin/PointsManagement/PointsManagement.tsx
+// --- Путь: src/components/admin/PointsManagement/PointsManagement.tsx ---
+
 import React from 'react';
+import { usePointsManagement } from '../../../hooks/admin/Points/usePointsManagement';
 import { PointsHeader } from './PointsHeader';
 import { PointsTable } from './PointsTable';
 import { PointForm } from './PointForm';
-import { usePointsManagement } from '../../../hooks/admin/Points/usePointsManagement';
+import { Modal } from '../../ui/Modal/Modal';
 import '../../../styles/admin/ui/PageLayout.css';
 
 export const PointsManagement: React.FC = () => {
   const {
     points,
-    loading, // Глобальный лоадинг для списка
+    loading,
     error,
-    currentPage,
-    handlePreviousPage,
-    handleNextPage,
-    canGoNext,
-    canGoPrevious,
     handleEdit,
-    handleShowAddForm,
     handleDelete,
+    handleShowAddForm,
     handleFormSuccess,
     showForm,
     setShowForm,
     pointToEdit,
-    pointContentToEdit, // Контент для редактирования
-    loadingContent,     // Индикатор загрузки контента для формы
   } = usePointsManagement();
-
-  // Определяем, показывать ли индикатор загрузки для формы
-  // (только если редактируем, форма открыта И контент еще грузится)
-  const showFormLoadingIndicator = pointToEdit && showForm && loadingContent;
 
   return (
     <div className="page-container">
       <PointsHeader
-        isLoading={loading} // Блокируем кнопку "Добавить", пока грузится основной список
+        isLoading={loading}
         onShowForm={handleShowAddForm}
       />
 
-      {showForm && (
-        showFormLoadingIndicator ? (
-          <div className="form-container" style={{textAlign: 'center', padding: '2rem', border: '1px dashed #ccc', borderRadius: '8px', backgroundColor: '#f9f9f9'}}>
-            <p style={{fontSize: '1rem', color: '#555'}}>Загрузка данных точки для редактирования...</p>
-            {/* Можно добавить простой CSS-спиннер, если очень хочется, но и текст подойдет */}
-          </div>
-        ) : (
-          <PointForm
-            setShowForm={setShowForm}
-            pointToEdit={pointToEdit ? { ...pointToEdit, contentData: pointContentToEdit } : undefined}
-            onSuccess={handleFormSuccess}
-          />
-        )
-      )}
+      <Modal
+        isOpen={showForm}
+        onClose={() => setShowForm(false)}
+        title={pointToEdit ? 'Редактировать точку' : 'Создать новую точку'}
+        size="xl" // Используем большой размер, т.к. может быть конструктор контента
+      >
+        <PointForm
+          pointToEdit={pointToEdit}
+          onSuccess={() => {
+            handleFormSuccess();
+            setShowForm(false);
+          }}
+          onCancel={() => setShowForm(false)}
+        />
+      </Modal>
 
       <PointsTable
         points={points}
-        isLoading={loading} // Этот лоадинг для таблицы (пока грузится список)
+        isLoading={loading}
         error={error}
         onEdit={handleEdit}
         onDelete={handleDelete}
-        currentPage={currentPage}
-        handlePreviousPage={handlePreviousPage}
-        handleNextPage={handleNextPage}
-        canGoNext={canGoNext}
-        canGoPrevious={canGoPrevious}
       />
     </div>
   );

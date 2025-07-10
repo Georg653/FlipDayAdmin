@@ -1,205 +1,205 @@
-// src/components/admin/NewsManagement/ContentBlockForm.tsx
-import React, { useState, useEffect } from 'react';
-import type { ContentBlock, ContentBlockType, TestOption } from '../../../types/admin/News/news.types';
+// --- Путь: src/components/admin/NewsManagement/ContentBlockForm.tsx ---
+// ИСПРАВЛЕННАЯ ВЕРСИЯ
+
+import React from 'react';
+import { Button } from '../../ui/Button/Button';
 import { Input } from '../../ui/Input/Input';
 import { Textarea } from '../../ui/TextArea/Textarea';
-import { Select } from '../../ui/Select/Select'; // Наш простой селект
-import { Button } from '../../ui/Button/Button';
-import { v4 as uuidv4 } from 'uuid';
+import { ImageUpload } from '../../ui/ImageUpload/ImageUpload';
+import { Select } from '../../ui/Select/Select';
+import { Checkbox } from '../../ui/Checkbox/Checkbox'; // <--- ДОБАВЛЕН НОВЫЙ ИМПОРТ
+import { createImageUrl } from '../../../utils/media';
 
+// ВАЖНО: Используем общие типы
+import type { ContentBlockFormData, CollectionItemFormData, TestOptionFormData } from '../../../types/common/content.types';
+
+import './ContentBlockForm.css';
+
+// Компонент для коллекций остается без изменений
+const CollectionEditor: React.FC<{
+  block: ContentBlockFormData;
+  onUpdateBlock: (id: string, data: Partial<ContentBlockFormData>) => void;
+}> = ({ block, onUpdateBlock }) => {
+    const handleItemFileChange = (itemId: string, file: File | null) => {
+        const newItems = (block.items || []).map(item => 
+            item.id === itemId 
+                ? { ...item, file, preview: file ? URL.createObjectURL(file) : item.url } 
+                : item
+        );
+        onUpdateBlock(block.id, { items: newItems });
+    };
+    const handleAddItem = () => {
+        const newItem: CollectionItemFormData = { id: crypto.randomUUID(), url: null, file: null, preview: null };
+        const newItems = [...(block.items || []), newItem];
+        onUpdateBlock(block.id, { items: newItems });
+    };
+    const handleRemoveItem = (itemId: string) => {
+        const newItems = (block.items || []).filter(item => item.id !== itemId);
+        onUpdateBlock(block.id, { items: newItems });
+    };
+    return (
+        <div className="collection-editor">
+            <div className="collection-items-grid">
+                {(block.items || []).map(item => (
+                    <div key={item.id} className="collection-item">
+                        <ImageUpload
+                            id={`file-collection-${item.id}`} name="collection_item_file"
+                            previewUrl={item.preview || createImageUrl(item.url)}
+                            onChange={(e) => handleItemFileChange(item.id, e.target.files?.[0] || null)}
+                        />
+                        <Button size="icon" variant="destructive" onClick={() => handleRemoveItem(item.id)} className="collection-item-delete" aria-label="Удалить изображение">×</Button>
+                    </div>
+                ))}
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={handleAddItem}>+ Добавить изображение</Button>
+        </div>
+    );
+};
+
+// --- НОВЫЙ КОМПОНЕНТ ДЛЯ РЕДАКТИРОВАНИЯ ТЕСТОВ ---
+const TestEditor: React.FC<{
+  block: ContentBlockFormData;
+  onUpdateBlock: (id: string, data: Partial<ContentBlockFormData>) => void;
+}> = ({ block, onUpdateBlock }) => {
+    const handleQuestionChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        onUpdateBlock(block.id, { question: e.target.value });
+    };
+    const handleMessageChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+        onUpdateBlock(block.id, { message: e.target.value });
+    };
+    const handleOptionTextChange = (optionId: string, text: string) => {
+        const newOptions = (block.options || []).map(opt => 
+            opt.id === optionId ? { ...opt, text } : opt
+        );
+        onUpdateBlock(block.id, { options: newOptions });
+    };
+    const handleCorrectOptionChange = (optionId: string) => {
+        const newOptions = (block.options || []).map(opt => ({
+            ...opt,
+            isCorrect: opt.id === optionId
+        }));
+        onUpdateBlock(block.id, { options: newOptions });
+    };
+    const handleAddOption = () => {
+        const newOption: TestOptionFormData = { id: crypto.randomUUID(), text: '', isCorrect: false };
+        const newOptions = [...(block.options || []), newOption];
+        onUpdateBlock(block.id, { options: newOptions });
+    };
+    const handleRemoveOption = (optionId: string) => {
+        // Не даем удалить последний вариант
+        if ((block.options?.length ?? 0) <= 1) return;
+        const newOptions = (block.options || []).filter(opt => opt.id !== optionId);
+        onUpdateBlock(block.id, { options: newOptions });
+    };
+
+    return (
+        <div className="test-editor">
+            <div className="form-group">
+                <label>Вопрос теста*</label>
+                <Input value={block.question || ''} onChange={handleQuestionChange} placeholder="Введите вопрос..." />
+            </div>
+            <label>Варианты ответов (отметьте правильный)</label>
+            <div className="test-options-list">
+                {(block.options || []).map((option, index) => (
+                    <div key={option.id} className="test-option-item">
+                        <Checkbox 
+                            id={`correct-${option.id}`} label="" checked={option.isCorrect}
+                            onChange={() => handleCorrectOptionChange(option.id)}
+                            title="Отметить как правильный ответ"
+                        />
+                        <Input 
+                            value={option.text}
+                            onChange={(e) => handleOptionTextChange(option.id, e.target.value)}
+                            placeholder={`Вариант ${index + 1}`}
+                            className="test-option-input"
+                        />
+                        <Button 
+                            type="button" variant="destructive" size="sm"
+                            onClick={() => handleRemoveOption(option.id)}
+                            disabled={(block.options?.length ?? 0) <= 1}
+                        >
+                            -
+                        </Button>
+                    </div>
+                ))}
+            </div>
+            <Button type="button" variant="outline" size="sm" onClick={handleAddOption}>+ Добавить вариант</Button>
+            <div className="form-group" style={{marginTop: '1rem'}}>
+                <label>Сообщение после ответа (опционально)</label>
+                <Textarea value={block.message || ''} onChange={handleMessageChange} rows={2} placeholder="Например, объяснение правильного ответа..." />
+            </div>
+        </div>
+    );
+};
+
+// Пропсы для главной формы
 interface ContentBlockFormProps {
-  initialBlock?: ContentBlock | null; // Для редактирования
-  onSave: (block: ContentBlock) => void;
-  onCancel: () => void;
+  block: ContentBlockFormData;
+  index: number;
+  isSubmitting: boolean;
+  onRemoveBlock: (id: string) => void;
+  onUpdateBlock: (id: string, newBlockData: Partial<ContentBlockFormData>) => void;
+  onMoveBlockUp: () => void;
+  onMoveBlockDown: () => void;
+  onAddBlock: (type: ContentBlockFormData['type'], index: number) => void;
 }
 
-const blockTypeOptions = [
-  { value: 'heading', label: 'Заголовок' },
-  { value: 'text', label: 'Текст' },
-  { value: 'image', label: 'Изображение' },
-  { value: 'video', label: 'Видео' },
-  { value: 'audio', label: 'Аудио' },
-  { value: 'album', label: 'Альбом (несколько изображений)' },
-  { value: 'slider', label: 'Слайдер (несколько изображений)' },
-  { value: 'test', label: 'Тест (один правильный ответ)' },
-];
-
 export const ContentBlockForm: React.FC<ContentBlockFormProps> = ({
-  initialBlock,
-  onSave,
-  onCancel,
+  block, index, isSubmitting, onRemoveBlock, onUpdateBlock, onMoveBlockUp, onMoveBlockDown,
 }) => {
-  const [block, setBlock] = useState<ContentBlock>(
-    initialBlock || { __id: uuidv4(), type: 'text', content: '' }
-  );
 
-  useEffect(() => {
-    if (initialBlock) {
-      setBlock(initialBlock);
-    } else {
-        // При создании нового блока, сбрасываем поля специфичные для типа
-        setBlock(prev => ({ __id: prev.__id || uuidv4(), type: prev.type, content: '', level: undefined, src: undefined, question: undefined, options: undefined, message: undefined, text: undefined }));
-    }
-  }, [initialBlock]);
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
-    const { name, value, type: inputType } = e.target;
-    let processedValue: any = value;
-    if (name === 'level' && inputType === 'number') {
-      processedValue = value === '' ? null : parseInt(value, 10);
-    }
-    if (name === 'type') { // При смене типа блока, сбрасываем специфичные поля
-        setBlock({ __id: block.__id || uuidv4(), type: value as ContentBlockType });
-        return;
-    }
-    setBlock(prev => ({ ...prev, [name]: processedValue }));
-  };
-
-  const handleSrcChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>, index?: number) => {
-    const { value } = e.target;
-    if (block.type === 'album' || block.type === 'slider') {
-      const newSrc = Array.isArray(block.src) ? [...block.src] : [];
-      if (index !== undefined) {
-        newSrc[index] = value;
-      }
-      setBlock(prev => ({ ...prev, src: newSrc.filter(s => s.trim() !== '') })); // Убираем пустые строки
-    } else {
-      setBlock(prev => ({ ...prev, src: value }));
-    }
-  };
-  
-  const addSrcField = () => {
-    if (block.type === 'album' || block.type === 'slider') {
-      const newSrc = Array.isArray(block.src) ? [...block.src, ''] : [''];
-      setBlock(prev => ({ ...prev, src: newSrc }));
-    }
-  };
-  
-  const removeSrcField = (index: number) => {
-     if (block.type === 'album' || block.type === 'slider') {
-      const newSrc = (Array.isArray(block.src) ? [...block.src] : []).filter((_, i) => i !== index);
-      setBlock(prev => ({ ...prev, src: newSrc }));
-    }
-  };
-
-  const handleTestOptionChange = (index: number, field: 'id' | 'text', value: string) => {
-    const newOptions = [...(block.options || [])];
-    if(newOptions[index]) {
-        newOptions[index] = { ...newOptions[index], [field]: value };
-        setBlock(prev => ({ ...prev, options: newOptions }));
-    }
-  };
-
-  const addTestOption = () => {
-    const newOption: TestOption = { id: uuidv4(), text: '' };
-    setBlock(prev => ({ ...prev, options: [...(prev.options || []), newOption] }));
-  };
-
-  const removeTestOption = (index: number) => {
-    setBlock(prev => ({ ...prev, options: (prev.options || []).filter((_, i) => i !== index) }));
-  };
-
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    // TODO: Добавить валидацию полей в зависимости от block.type
-    onSave(block);
-  };
-
-  const renderSpecificFields = () => {
+  const renderBlockFields = () => {
     switch (block.type) {
       case 'heading':
         return (
-          <>
-            <div className="form-group">
-              <label htmlFor="block-level">Уровень (1-6)</label>
-              <Input id="block-level" name="level" type="number" min="1" max="6" value={block.level || ''} onChange={handleChange} required />
-            </div>
-            <div className="form-group">
-              <label htmlFor="block-content-heading">Текст заголовка</label>
-              <Input id="block-content-heading" name="content" value={block.content || ''} onChange={handleChange} required />
-            </div>
-          </>
-        );
-      case 'text':
-        return (
-          <div className="form-group">
-            <label htmlFor="block-content-text">Текст</label>
-            <Textarea id="block-content-text" name="content" value={block.content || ''} onChange={handleChange} rows={5} required />
+          <div className="heading-editor">
+            <Input name="content" value={block.content || ''} onChange={(e) => onUpdateBlock(block.id, { content: e.target.value })} disabled={isSubmitting} placeholder="Текст заголовка..."/>
+            <Select
+              label="Уровень"
+              value={block.level}
+              onChange={(e) => onUpdateBlock(block.id, { level: Number(e.target.value) as 1 | 2 | 3 | 4 })}
+              options={[{ value: 1, label: 'H1' }, { value: 2, label: 'H2' }, { value: 3, label: 'H3' }, { value: 4, label: 'H4' }]}
+              disabled={isSubmitting}
+            />
           </div>
         );
+      case 'text':
+        return <Textarea name="content" value={block.content || ''} onChange={(e) => onUpdateBlock(block.id, { content: e.target.value })} disabled={isSubmitting} rows={5} placeholder="Введите текст..."/>;
       case 'image':
       case 'video':
+        return <ImageUpload id={`file-${block.id}`} name="file" onChange={(e) => onUpdateBlock(block.id, { file: e.target.files?.[0] || null })} previewUrl={block.file ? URL.createObjectURL(block.file) : createImageUrl(block.src)} label={block.type === 'image' ? "Изображение" : "Видео"} />;
       case 'audio':
         return (
           <>
-            <div className="form-group">
-              <label htmlFor="block-src-single">URL ресурса ({block.type})</label>
-              <Input id="block-src-single" name="src" type="url" value={typeof block.src === 'string' ? block.src : ''} onChange={handleSrcChange} placeholder="https://example.com/resource.jpg" required />
-            </div>
-            <div className="form-group">
-                <label htmlFor="block-text-caption">Подпись/Альтернативный текст (опционально)</label>
-                <Input id="block-text-caption" name="text" value={block.text || ''} onChange={handleChange} />
-            </div>
+            <p>Текущий файл: {block.src || 'не выбран'}</p>
+            <Input type="file" id={`file-${block.id}`} name="file" onChange={(e) => onUpdateBlock(block.id, { file: e.target.files?.[0] || null })} accept="audio/*"/>
           </>
         );
       case 'album':
       case 'slider':
-        return (
-          <div className="form-group">
-            <label>URL изображений для "{block.type}"</label>
-            {(Array.isArray(block.src) ? block.src : []).map((s, index) => (
-              <div key={index} className="form-group-array-item">
-                <Input type="url" value={s} onChange={(e) => handleSrcChange(e, index)} placeholder={`URL изображения ${index + 1}`} />
-                <Button type="button" onClick={() => removeSrcField(index)} variant="destructive" size="sm" style={{marginLeft: '0.5rem'}}>Удалить</Button>
-              </div>
-            ))}
-            <Button type="button" onClick={addSrcField} variant="outline" size="sm" style={{marginTop: '0.5rem'}}>Добавить URL</Button>
-          </div>
-        );
+        return <CollectionEditor block={block} onUpdateBlock={onUpdateBlock} />;
+      
+      // ИЗМЕНЕНО: Заменяем заглушку на полноценный редактор
       case 'test':
-        return (
-          <>
-            <div className="form-group">
-              <label htmlFor="block-question">Вопрос</label>
-              <Textarea id="block-question" name="question" value={block.question || ''} onChange={handleChange} rows={2} required />
-            </div>
-            <div className="form-group">
-              <label>Варианты ответов</label>
-              {(block.options || []).map((opt, index) => (
-                <div key={opt.id || index} className="form-group-array-item">
-                  <Input name={`option-text-${index}`} placeholder={`Текст варианта ${index + 1}`} value={opt.text} onChange={(e) => handleTestOptionChange(index, 'text', e.target.value)} required />
-                  {/* ID для опции обычно генерируется, но можно дать возможность его править */}
-                  {/* <Input name={`option-id-${index}`} placeholder="ID варианта (уникальный)" value={opt.id} onChange={(e) => handleTestOptionChange(index, 'id', e.target.value)} style={{maxWidth: '150px', marginLeft: '0.5rem'}}/> */}
-                  <Button type="button" onClick={() => removeTestOption(index)} variant="destructive" size="sm" style={{marginLeft: '0.5rem'}}>Удалить</Button>
-                </div>
-              ))}
-              <Button type="button" onClick={addTestOption} variant="outline" size="sm" style={{marginTop: '0.5rem'}}>Добавить вариант</Button>
-            </div>
-            <div className="form-group">
-              <label htmlFor="block-message-test">Сообщение к тесту (опционально)</label>
-              <Textarea id="block-message-test" name="message" value={block.message || ''} onChange={handleChange} rows={2} />
-            </div>
-          </>
-        );
-      default:
-        return <p>Неизвестный тип блока.</p>;
+        return <TestEditor block={block} onUpdateBlock={onUpdateBlock} />;
+
+      default: return null;
     }
   };
 
   return (
-    <form onSubmit={handleSubmit} className="content-block-form">
-      <div className="form-group">
-        <label htmlFor="block-type">Тип блока*</label>
-        <Select id="block-type" name="type" value={block.type} onChange={handleChange} options={blockTypeOptions} required />
+    <div className="content-block-form">
+      <div className="block-header">
+        <span className="block-title">Блок: {block.type}</span>
+        <div className="block-controls">
+          <Button type="button" size="sm" variant="outline" onClick={onMoveBlockUp} disabled={index === 0}>↑</Button>
+          <Button type="button" size="sm" variant="outline" onClick={onMoveBlockDown}>↓</Button>
+          <Button type="button" size="sm" variant="destructive" onClick={() => onRemoveBlock(block.id)}>Удалить</Button>
+        </div>
       </div>
-      
-      {renderSpecificFields()}
-
-      <div className="form-actions" style={{ marginTop: '1.5rem', paddingTop: '1rem', borderTop: '1px solid #eee' }}>
-        <Button type="submit" variant="success">Сохранить блок</Button>
-        <Button type="button" variant="outline" onClick={onCancel}>Отмена</Button>
+      <div className="block-fields">
+        {renderBlockFields()}
       </div>
-    </form>
+    </div>
   );
 };

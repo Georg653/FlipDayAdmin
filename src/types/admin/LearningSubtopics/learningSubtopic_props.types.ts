@@ -1,42 +1,34 @@
-// src/types/admin/LearningSubtopics/learningSubtopic_props.types.ts
-import type React from 'react';
-import type {
-  LearningSubtopic,
-  LearningSubtopicFormData,
-  TopicOption,
-} from './learningSubtopic.types';
+// --- Путь: src/types/admin/LearningSubtopics/learningSubtopic_props.types.ts ---
 
-export interface LearningSubtopicFormProps {
-  formData: LearningSubtopicFormData;
-  isSubmitting: boolean;
-  formError: string | null;
-   handleChange: (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => void;
-  handleFileChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
-  handleSubmit: (e: React.FormEvent) => void;
-  setShowForm: (show: boolean) => void;
-  handleCancel: () => void;
-  learningSubtopicToEdit?: LearningSubtopic | null;
-  topicOptions?: TopicOption[];
+import type { LearningSubtopic } from './learningSubtopic.types';
+import type { TopicOption } from './learningSubtopic.types';
+
+export interface LearningSubtopicsTableProps {
+  subtopics: LearningSubtopic[];
+  isLoading: boolean;
+  error: string | null;
+  onEdit: (subtopic: LearningSubtopic) => void;
+  onDelete: (id: number) => void;
+  currentPage: number;
+  canGoNext: boolean;
+  canGoPrevious: boolean;
+  handleNextPage: () => void;
+  handlePreviousPage: () => void;
 }
 
 export interface LearningSubtopicsHeaderProps {
   isLoading: boolean;
   onShowForm: () => void;
-  currentTopicIdInput: string;
-  onTopicIdChange: (value: string) => void;
-  topicOptions?: TopicOption[];
-  loadingTopics?: boolean;
+  topics: TopicOption[]; // Список тем для селекта
+  selectedTopicId: string | null;
+  onTopicChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+  isAddButtonDisabled: boolean;
 }
 
-export interface LearningSubtopicsTableProps {
-  learningSubtopics: LearningSubtopic[];
-  isLoading: boolean;
-  error: string | null;
-  onEdit: (learningSubtopic: LearningSubtopic) => void;
-  onDelete: (id: number) => void;
-  currentPage: number;
-  totalItems: number;
-  itemsPerPage: number;
-  handlePreviousPage: () => void;
-  handleNextPage: () => void;
+export interface LearningSubtopicFormProps {
+  subtopicToEdit: LearningSubtopic | null;
+  onSuccess: (subtopic: LearningSubtopic) => void;
+  onCancel: () => void;
+  topics: TopicOption[]; // Список тем для селекта в форме
+  // `selectedTopicId` не нужен, т.к. он уже будет в subtopicToEdit или установлен при создании
 }

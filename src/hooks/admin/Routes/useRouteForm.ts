@@ -1,279 +1,138 @@
-// src/hooks/admin/Routes/useRouteForm.ts
-import { useState, useEffect, useCallback } from 'react';
-import { v4 as uuidv4 } from 'uuid';
-import type {
-  Route,
-  RouteCreateDataPayload,
-  RouteUpdateDataPayload,
-  RouteFormData,
-  RouteFormOptions,
-  RoutePointInfo,    // Для хранения выбранных точек в форме
-  SelectablePoint,   // Для списка всех доступных точек
-  Point,             // Базовый тип Point
-  RouteCategory,     // Для списка категорий
+// --- Путь: src/hooks/admin/Routes/useRouteForm.ts ---
+
+import { useState, useEffect } from 'react';
+import type { 
+  Route, 
+  RouteFormData, 
+  RouteCreateUpdatePayload 
 } from '../../../types/admin/Routes/route.types';
-import { initialRouteFormData } from '../../../types/admin/Routes/route.types';
+import type { Point } from '../../../types/admin/Points/point.types';
+import type { RouteCategory } from '../../../types/admin/RouteCategories/routeCategory.types';
+
 import { RoutesApi } from '../../../services/admin/Routes/routesApi';
-import { PointsApi } from '../../../services/admin/Points/pointsApi'; // Для загрузки всех точек
-import { RouteCategoriesApi } from '../../../services/admin/RouteCategories/routeCategoriesApi'; // Для загрузки категорий
+import { PointsApi } from '../../../services/admin/Points/pointsApi';
+import { RouteCategoriesApi } from '../../../services/admin/RouteCategories/routeCategoriesApi';
 
-// import { useNotification } from '../../../contexts/admin/NotificationContext';
+const initialFormData: RouteFormData = {
+  name: '',
+  description: '',
+  route_category_id: '',
+  distance: '0',
+  estimated_time: '0',
+  budget: '0',
+  image_file: null,
+  image_preview_url: null,
+  remove_image: false,
+  points: [],
+};
 
-export const useRouteForm = (options: RouteFormOptions) => {
-  const { onSuccess, routeToEdit } = options;
-  // const { showNotification } = useNotification();
+interface UseRouteFormOptions {
+  routeToEdit: Route | null;
+  onSuccess: () => void;
+}
 
-  const [formData, setFormData] = useState<RouteFormData>(initialRouteFormData);
-  const [formError, setFormError] = useState<string | null>(null);
+export const useRouteForm = ({ routeToEdit, onSuccess }: UseRouteFormOptions) => {
+  const [formData, setFormData] = useState<RouteFormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  // Для выбора точек
-  const [allAvailablePoints, setAllAvailablePoints] = useState<Point[]>([]);
-  const [loadingAvailablePoints, setLoadingAvailablePoints] = useState(false);
-  
-  // Для выбора категории
-  const [routeCategories, setRouteCategories] = useState<Pick<RouteCategory, 'id' | 'name'>[]>([]);
-  const [loadingRouteCategories, setLoadingRouteCategories] = useState(false);
-
-  // Загрузка категорий для селекта
-  const fetchRouteCategoriesForForm = useCallback(async () => {
-    setLoadingRouteCategories(true);
-    try {
-      const categoriesResponse = await RouteCategoriesApi.getRouteCategoriesList({ limit: 200 });
-      // Фильтруем категорию с ID=1, так как ее нельзя выбирать (согласно коду бэка)
-      setRouteCategories(
-        categoriesResponse
-            .filter(cat => cat.id !== 1) 
-            .map(cat => ({ id: cat.id, name: cat.name }))
-      );
-    } catch (err) {
-      console.error("Не удалось загрузить категории маршрутов для формы:", err);
-      setRouteCategories([]);
-    } finally {
-      setLoadingRouteCategories(false);
-    }
-  }, []);
-
-  // Загрузка всех доступных точек для выбора
-  const fetchAllAvailablePoints = useCallback(async () => {
-    setLoadingAvailablePoints(true);
-    try {
-      // Загружаем все точки (или с большим лимитом, если их очень много)
-      // Предполагаем, что PointsApi.getPointsList вернет массив Point[]
-      const pointsResponse = await PointsApi.getPointsList({ limit: 1000 }); // Отрегулируй лимит
-      setAllAvailablePoints(pointsResponse);
-    } catch (err) {
-      console.error("Не удалось загрузить доступные точки:", err);
-      setAllAvailablePoints([]);
-    } finally {
-      setLoadingAvailablePoints(false);
-    }
-  }, []);
+  const [allCategories, setAllCategories] = useState<RouteCategory[]>([]);
+  const [allPoints, setAllPoints] = useState<Point[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    fetchRouteCategoriesForForm();
-    fetchAllAvailablePoints();
-  }, [fetchRouteCategoriesForForm, fetchAllAvailablePoints]);
-  
-  const resetForm = useCallback(() => {
-    setFormData(initialRouteFormData);
-    setFormError(null);
-  }, []);
-
-  useEffect(() => {
-    if (routeToEdit) {
-      // Преобразуем routeToEdit.points (который может быть number[] или Point[])
-      // в RoutePointInfo[] для формы.
-      // Если routeToEdit.points это number[], нам нужны детали этих точек.
-      // Если это Point[], нам нужен order.
-      // Бэкенд возвращает в RouteResponse.points массив PointResponse[], где order неявный.
-      // Значит, при редактировании нам нужно восстановить order и основную инфу.
-      
-      let initialSelectedPoints: RoutePointInfo[] = [];
-      if (routeToEdit.points && Array.isArray(routeToEdit.points)) {
-        initialSelectedPoints = routeToEdit.points.map((pointOrId, index) => {
-          if (typeof pointOrId === 'number') {
-            // Если только ID, ищем в allAvailablePoints (этот сценарий менее вероятен с текущим бэком)
-            const pointDetail = allAvailablePoints.find(p => p.id === pointOrId);
-            return {
-              id: pointOrId,
-              name: pointDetail?.name || `Точка ID: ${pointOrId}`,
-              latitude: pointDetail?.latitude || 0,
-              longitude: pointDetail?.longitude || 0,
-              image: pointDetail?.image || null,
-              order: index,
-              __id: uuidv4(),
-            };
-          } else { // Если это объект Point
-            const point = pointOrId as Point; // Приводим тип
-            return {
-              id: point.id,
-              name: point.name,
-              latitude: point.latitude,
-              longitude: point.longitude,
-              image: point.image,
-              order: index, // Порядок по индексу из API
-              __id: uuidv4(),
-            };
-          }
-        });
+    const fetchDataForForm = async () => {
+      setIsLoading(true);
+      try {
+        // --- ИСПРАВЛЕНИЕ: Уменьшаем limit до адекватного значения ---
+        // Если у тебя больше 200 категорий или точек, это число нужно будет увеличить
+        // или реализовать полную подгрузку всех страниц. Но для начала этого хватит.
+        const [categoriesData, pointsData] = await Promise.all([
+          RouteCategoriesApi.getRouteCategories({ limit: 200 }),
+          PointsApi.getPointsList({ limit: 200 })
+        ]);
+        setAllCategories(categoriesData);
+        setAllPoints(pointsData);
+      } catch (err) {
+        setFormError('Ошибка загрузки данных для формы (категорий или точек).');
+      } finally {
+        setIsLoading(false);
       }
+    };
+    fetchDataForForm();
+  }, []);
+
+
+  useEffect(() => {
+    if (routeToEdit && allPoints.length > 0) {
+      const selectedPoints = routeToEdit.points
+        .map(pointId => allPoints.find(p => p.id === pointId))
+        .filter((p): p is Point => p !== undefined);
 
       setFormData({
         name: routeToEdit.name,
         description: routeToEdit.description,
-        route_category_id: routeToEdit.route_category_id.toString(),
-        selected_points: initialSelectedPoints,
-        distance: routeToEdit.distance.toString(),
-        estimated_time: routeToEdit.estimated_time.toString(),
-        budget: routeToEdit.budget.toString(),
-        auto_generated: routeToEdit.auto_generated, // Не редактируется, но отображаем
+        route_category_id: String(routeToEdit.route_category_id),
+        distance: String(routeToEdit.distance),
+        estimated_time: String(routeToEdit.estimated_time),
+        budget: String(routeToEdit.budget),
         image_file: null,
         image_preview_url: routeToEdit.image,
-        existing_image_url: routeToEdit.image,
+        remove_image: false,
+        points: selectedPoints,
       });
-      setFormError(null);
     } else {
-      resetForm();
+      setFormData(initialFormData);
     }
-  }, [routeToEdit, resetForm, allAvailablePoints]); // Добавили allAvailablePoints в зависимости
+  }, [routeToEdit, allPoints]);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>
-  ) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (formError) setFormError(null);
-  };
-  
-  const handleCheckboxChange = (name: string, checked: boolean) => {
-    setFormData((prev) => ({ ...prev, [name]: checked }));
-    if (formError) setFormError(null);
-  };
 
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+    setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
+  };
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0] || null;
-    setFormData((prev) => ({
-      ...prev,
-      image_file: file,
-      image_preview_url: file ? URL.createObjectURL(file) : prev.existing_image_url,
-    }));
-    if (formError) setFormError(null);
+    setFormData(prev => ({ ...prev, image_file: e.target.files?.[0] || null }));
   };
-
-  // --- Логика управления выбранными точками маршрута ---
-  const handleAddPointToRoute = useCallback((pointId: number) => {
-    const pointToAdd = allAvailablePoints.find(p => p.id === pointId);
-    if (pointToAdd && !formData.selected_points.find(p => p.id === pointId)) {
-      const newRoutePoint: RoutePointInfo = {
-        id: pointToAdd.id,
-        name: pointToAdd.name,
-        latitude: pointToAdd.latitude,
-        longitude: pointToAdd.longitude,
-        image: pointToAdd.image,
-        order: formData.selected_points.length, // Новый порядок
-        __id: uuidv4(),
-      };
-      setFormData(prev => ({
-        ...prev,
-        selected_points: [...prev.selected_points, newRoutePoint]
-      }));
-    }
-  }, [allAvailablePoints, formData.selected_points]);
-
-  const handleRemovePointFromRoute = useCallback((pointIdToRemove: number) => {
-    setFormData(prev => ({
-      ...prev,
-      selected_points: prev.selected_points
-        .filter(p => p.id !== pointIdToRemove)
-        .map((p, index) => ({ ...p, order: index })), // Пересчитываем order
-    }));
-  }, []);
-
-  const handleMovePointInRoute = useCallback((pointIdToMove: number, direction: 'up' | 'down') => {
-    setFormData(prev => {
-      const currentIndex = prev.selected_points.findIndex(p => p.id === pointIdToMove);
-      if (currentIndex === -1) return prev;
-
-      const newIndex = direction === 'up' ? currentIndex - 1 : currentIndex + 1;
-      if (newIndex < 0 || newIndex >= prev.selected_points.length) return prev;
-
-      const newSelectedPoints = [...prev.selected_points];
-      const [movedPoint] = newSelectedPoints.splice(currentIndex, 1);
-      newSelectedPoints.splice(newIndex, 0, movedPoint);
-
-      // Обновляем order для всех точек
-      return {
-        ...prev,
-        selected_points: newSelectedPoints.map((p, index) => ({ ...p, order: index })),
-      };
-    });
-  }, []);
-  // --- Конец логики управления точками ---
-
+  const handleRemoveImage = (checked: boolean) => {
+    setFormData(prev => ({ ...prev, remove_image: checked }));
+  };
+  const handlePointsChange = (newPoints: Point[]) => {
+    setFormData(prev => ({ ...prev, points: newPoints }));
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.route_category_id || formData.route_category_id === "1") {
-        setFormError('Выберите категорию маршрута (нельзя выбрать "Autogenerated" ID=1).');
-        setIsSubmitting(false);
-        return;
-    }
-    if (formData.selected_points.length === 0) {
-        setFormError('Маршрут должен содержать хотя бы одну точку.');
-        setIsSubmitting(false);
-        return;
-    }
-    // ... (другие валидации для name, distance и т.д.)
-
     setIsSubmitting(true);
     setFormError(null);
 
-    const payload: RouteCreateDataPayload = {
-      name: formData.name.trim(),
-      description: formData.description.trim(),
-      route_category_id: parseInt(formData.route_category_id, 10),
-      points: formData.selected_points.map(p => p.id), // Отправляем массив ID точек
+    const categoryId = parseInt(formData.route_category_id, 10);
+    if (isNaN(categoryId) || categoryId <= 0) {
+      setFormError('Нужно выбрать категорию.'); setIsSubmitting(false); return;
+    }
+    if (formData.points.length === 0) {
+      setFormError('Маршрут должен содержать хотя бы одну точку.'); setIsSubmitting(false); return;
+    }
+
+    const payload: RouteCreateUpdatePayload = {
+      name: formData.name,
+      description: formData.description,
+      route_category_id: categoryId,
       distance: parseFloat(formData.distance) || 0,
       estimated_time: parseInt(formData.estimated_time, 10) || 0,
       budget: parseFloat(formData.budget) || 0,
-      auto_generated: formData.auto_generated,
+      points: formData.points.map(p => p.id),
+      image_url: formData.image_file ? null : formData.image_preview_url,
     };
-    
-    try {
-      let result: Route;
-      const isEditing = !!routeToEdit;
 
-      if (isEditing && routeToEdit) {
-        const updatePayload: RouteUpdateDataPayload = { ...payload };
-        // auto_generated нельзя менять при обновлении через админский PUT, убираем его из payload
-        delete (updatePayload as any).auto_generated; 
-        
-        result = await RoutesApi.updateRoute(
-          routeToEdit.id,
-          updatePayload,
-          formData.image_file
-        );
-        console.log('Маршрут успешно обновлен!');
+    try {
+      if (routeToEdit) {
+        await RoutesApi.updateRoute(routeToEdit.id, payload, formData.image_file, formData.remove_image);
       } else {
-        result = await RoutesApi.createRoute(
-          payload, // auto_generated здесь уже установлен (false по умолчанию на бэке)
-          formData.image_file
-        );
-        console.log('Маршрут успешно создан!');
+        await RoutesApi.createRoute(payload, formData.image_file);
       }
-      onSuccess?.(result);
-    } catch (error: any) {
-      console.error("Ошибка сохранения маршрута:", error);
-      const message = error.response?.data?.detail || `Не удалось ${routeToEdit ? 'обновить' : 'создать'} маршрут.`;
-      let errorMessage = "Произошла неизвестная ошибка.";
-       if (typeof message === 'string') {
-        errorMessage = message;
-      } else if (Array.isArray(message) && message.length > 0 && typeof message[0] === 'object' && message[0].msg) {
-        errorMessage = message.map(err => `${err.loc?.join('.') || 'поле'} - ${err.msg}`).join('; ');
-      }
-      console.error(errorMessage);
-      setFormError(errorMessage);
+      onSuccess();
+    } catch (err: any) {
+      setFormError(err.response?.data?.detail || 'Ошибка сохранения маршрута');
     } finally {
       setIsSubmitting(false);
     }
@@ -281,22 +140,15 @@ export const useRouteForm = (options: RouteFormOptions) => {
 
   return {
     formData,
-    setFormData, // Передаем для возможного внешнего управления (например, из компонента выбора точек)
-    handleChange,
-    handleCheckboxChange,
-    handleFileChange,
-    handleSubmit,
     isSubmitting,
     formError,
-    resetForm,
-    // Для селектов и выбора точек
-    routeCategories,
-    loadingRouteCategories,
-    allAvailablePoints, // Список всех точек для выбора
-    loadingAvailablePoints,
-    // Функции для управления точками в маршруте
-    handleAddPointToRoute,
-    handleRemovePointFromRoute,
-    handleMovePointInRoute,
+    allCategories,
+    allPoints,
+    isLoading,
+    handleChange,
+    handleFileChange,
+    handleRemoveImage,
+    handlePointsChange,
+    handleSubmit,
   };
 };

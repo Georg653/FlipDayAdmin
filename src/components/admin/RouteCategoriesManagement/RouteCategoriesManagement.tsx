@@ -1,9 +1,11 @@
-// src/components/admin/RouteCategoriesManagement/RouteCategoriesManagement.tsx
+// --- Путь: src/components/admin/RouteCategoriesManagement/RouteCategoriesManagement.tsx ---
+
 import React from 'react';
+import { useRouteCategoriesManagement } from '../../../hooks/admin/RouteCategories/useRouteCategoriesManagement';
 import { RouteCategoriesHeader } from './RouteCategoriesHeader';
 import { RouteCategoriesTable } from './RouteCategoriesTable';
 import { RouteCategoryForm } from './RouteCategoryForm';
-import { useRouteCategoriesManagement } from '../../../hooks/admin/RouteCategories/useRouteCategoriesManagement';
+import { Modal } from '../../ui/Modal/Modal';
 import '../../../styles/admin/ui/PageLayout.css';
 
 export const RouteCategoriesManagement: React.FC = () => {
@@ -11,16 +13,9 @@ export const RouteCategoriesManagement: React.FC = () => {
     categories,
     loading,
     error,
-    currentPage,
-    handlePreviousPage,
-    handleNextPage,
-    canGoNext,
-    canGoPrevious,
-    // filterSearch, // Если будут фильтры
-    // handleSearchFilterChange, // Если будут фильтры
     handleEdit,
-    handleShowAddForm,
     handleDelete,
+    handleShowAddForm,
     handleFormSuccess,
     showForm,
     setShowForm,
@@ -32,17 +27,23 @@ export const RouteCategoriesManagement: React.FC = () => {
       <RouteCategoriesHeader
         isLoading={loading}
         onShowForm={handleShowAddForm}
-        // filterSearch={filterSearch} // Передаем состояние фильтра
-        // onSearchFilterChange={handleSearchFilterChange} // Передаем обработчик фильтра
       />
 
-      {showForm && (
+      <Modal
+        isOpen={showForm}
+        onClose={() => setShowForm(false)}
+        title={categoryToEdit ? 'Редактировать категорию' : 'Создать новую категорию'}
+        size="md" // Средний размер для простой формы
+      >
         <RouteCategoryForm
-          setShowForm={setShowForm}
           categoryToEdit={categoryToEdit}
-          onSuccess={handleFormSuccess}
+          onSuccess={() => {
+            handleFormSuccess();
+            setShowForm(false);
+          }}
+          onCancel={() => setShowForm(false)}
         />
-      )}
+      </Modal>
 
       <RouteCategoriesTable
         categories={categories}
@@ -50,11 +51,6 @@ export const RouteCategoriesManagement: React.FC = () => {
         error={error}
         onEdit={handleEdit}
         onDelete={handleDelete}
-        currentPage={currentPage}
-        handlePreviousPage={handlePreviousPage}
-        handleNextPage={handleNextPage}
-        canGoNext={canGoNext}
-        canGoPrevious={canGoPrevious}
       />
     </div>
   );

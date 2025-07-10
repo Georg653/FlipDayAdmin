@@ -1,33 +1,35 @@
-// src/components/admin/LearningSubtopicsManagement/LearningSubtopicsTable.tsx
+// --- Путь: src/components/admin/LearningSubtopicsManagement/LearningSubtopicsTable.tsx ---
+
 import React from 'react';
 import type { LearningSubtopicsTableProps } from '../../../types/admin/LearningSubtopics/learningSubtopic_props.types';
 import { Button } from '../../ui/Button/Button';
 import { Pagination } from '../../ui/Pagination/Pagination';
+import { createImageUrl } from '../../../utils/media';
 import '../../../styles/admin/ui/Table.css';
 
 export const LearningSubtopicsTable: React.FC<LearningSubtopicsTableProps> = ({
-  learningSubtopics,
+  subtopics,
   isLoading,
   error,
   onEdit,
   onDelete,
   currentPage,
-  totalItems,
-  itemsPerPage,
-  handlePreviousPage,
+  canGoNext,
+  canGoPrevious,
   handleNextPage,
+  handlePreviousPage,
 }) => {
-  // Сначала проверяем на ошибку, так как она может быть важнее, чем isLoading или пустой массив
+  if (isLoading) {
+    return <div className="table-status-message">Загрузка подтем...</div>;
+  }
+
   if (error) {
-    return <div className="table-status-message table-status-error">Ошибка: {typeof error === 'string' ? error : JSON.stringify(error)}</div>;
+    return <div className="table-status-message table-status-error">Ошибка: {error}</div>;
   }
-
-  if (isLoading && (!Array.isArray(learningSubtopics) || learningSubtopics.length === 0)) {
-    return <div className="table-status-message table-status-loading">Загрузка подтем...</div>;
-  }
-
-  if (!isLoading && (!Array.isArray(learningSubtopics) || learningSubtopics.length === 0)) {
-    return <div className="table-status-message table-status-empty">Подтемы не найдены для выбранной темы или темы не загружены.</div>;
+  
+  // Сообщение зависит от того, выбрана ли тема (это неявно проверяется по isLoading)
+  if (!subtopics.length) {
+    return <div className="table-status-message">Подтемы не найдены. Выберите другую тему или создайте первую подтему для текущей.</div>;
   }
 
   return (
@@ -37,70 +39,54 @@ export const LearningSubtopicsTable: React.FC<LearningSubtopicsTableProps> = ({
           <thead>
             <tr className="table-header-row">
               <th className="table-header-cell">ID</th>
-              <th className="table-header-cell">Изобр.</th>
+              <th className="table-header-cell">Изображение</th>
               <th className="table-header-cell">Название</th>
-              <th className="table-header-cell">Описание</th>
-              <th className="table-header-cell">Опыт</th>
-              <th className="table-header-cell">Порядок</th>
-              <th className="table-header-cell">ID Темы</th>
+              <th className="table-header-cell">Род. тема (ID)</th>
+              <th className="table-header-cell" style={{ textAlign: 'center' }}>Порядок</th>
+              <th className="table-header-cell" style={{ textAlign: 'center' }}>Опыт</th>
               <th className="table-header-cell table-header-cell-actions">Действия</th>
             </tr>
           </thead>
           <tbody>
-            {learningSubtopics.map((subtopic) => (
-              <tr key={subtopic.id} className="table-body-row">
-                <td className="table-body-cell">{subtopic.id}</td>
-                <td className="table-body-cell">
-                  {subtopic.image ? (
-                    <img src={subtopic.image} alt={subtopic.name} className="table-image-thumbnail" />
-                  ) : (
-                    <span className="table-no-image">Нет</span>
-                  )}
-                </td>
-                <td className="table-body-cell">{subtopic.name}</td>
-                <td className="table-body-cell table-cell-description">
-                  {(subtopic.description && subtopic.description.length > 50)
-                    ? `${subtopic.description.substring(0, 50)}...`
-                    : subtopic.description || '—'}
-                </td>
-                <td className="table-body-cell">{subtopic.experience_points}</td>
-                <td className="table-body-cell">{subtopic.order}</td>
-                <td className="table-body-cell">{subtopic.topic_id}</td>
-                <td className="table-body-cell">
-                  <div className="table-actions-container">
-                    <Button
-                      variant="link"
-                      onClick={() => onEdit(subtopic)}
-                      disabled={isLoading}
-                      size="sm"
-                    >
-                      Ред.
-                    </Button>
-                    <Button
-                      variant="link"
-                      className="table-action-button-delete"
-                      onClick={() => onDelete(subtopic.id)}
-                      disabled={isLoading}
-                      size="sm"
-                    >
-                      Удал.
-                    </Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {subtopics.map((subtopic) => {
+              const imageUrl = createImageUrl(subtopic.image);
+              return (
+                <tr key={subtopic.id} className="table-body-row">
+                  <td className="table-body-cell">{subtopic.id}</td>
+                  <td className="table-body-cell">
+                    {imageUrl ? (
+                      <img src={imageUrl} alt={subtopic.name} className="table-image-thumbnail" />
+                    ) : (
+                      <span className="table-no-image">Нет</span>
+                    )}
+                  </td>
+                  <td className="table-body-cell">{subtopic.name}</td>
+                  <td className="table-body-cell" style={{ textAlign: 'center' }}>{subtopic.topic_id}</td>
+                  <td className="table-body-cell" style={{ textAlign: 'center' }}>{subtopic.order}</td>
+                  <td className="table-body-cell" style={{ textAlign: 'center' }}>{subtopic.experience_points}</td>
+                  <td className="table-body-cell">
+                    <div className="table-actions-container">
+                      <Button variant="link" size="sm" onClick={() => onEdit(subtopic)}>Ред.</Button>
+                      <Button variant="link" size="sm" className="table-action-button-delete" onClick={() => onDelete(subtopic.id)}>Удал.</Button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
-
-      {totalItems > 0 && Array.isArray(learningSubtopics) && learningSubtopics.length > 0 && (
+      
+      {(canGoPrevious || canGoNext) && (
         <div className="table-pagination-wrapper">
           <Pagination
             currentPage={currentPage}
-            totalItems={totalItems}
-            itemsPerPage={itemsPerPage}
+            totalItems={-1}
+            itemsPerPage={0}
             handlePreviousPage={handlePreviousPage}
             handleNextPage={handleNextPage}
+            canGoNext={canGoNext}
+            canGoPrevious={canGoPrevious}
             isLoading={isLoading}
           />
         </div>

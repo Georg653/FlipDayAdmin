@@ -1,30 +1,34 @@
-// src/components/admin/LearningTopicsManagement/LearningTopicsTable.tsx
+// --- Путь: src/components/admin/LearningTopicsManagement/LearningTopicsTable.tsx ---
+
 import React from 'react';
 import type { LearningTopicsTableProps } from '../../../types/admin/LearningTopics/learningTopic_props.types';
 import { Button } from '../../ui/Button/Button';
 import { Pagination } from '../../ui/Pagination/Pagination';
+import { createImageUrl } from '../../../utils/media';
 import '../../../styles/admin/ui/Table.css';
 
 export const LearningTopicsTable: React.FC<LearningTopicsTableProps> = ({
-  learningTopics,
+  topics,
   isLoading,
   error,
   onEdit,
   onDelete,
   currentPage,
-  totalItems,
-  itemsPerPage,
-  handlePreviousPage,
+  canGoNext,
+  canGoPrevious,
   handleNextPage,
+  handlePreviousPage,
 }) => {
-  if (isLoading && (!Array.isArray(learningTopics) || learningTopics.length === 0)) {
-    return <div className="table-status-message table-status-loading">Загрузка тем...</div>;
+  if (isLoading) {
+    return <div className="table-status-message">Загрузка тем...</div>;
   }
+
   if (error) {
     return <div className="table-status-message table-status-error">Ошибка: {error}</div>;
   }
-  if (!isLoading && (!Array.isArray(learningTopics) || learningTopics.length === 0)) {
-    return <div className="table-status-message table-status-empty">Темы обучения не найдены.</div>;
+
+  if (!topics.length) {
+    return <div className="table-status-message">Темы обучения не найдены. Создайте первую тему.</div>;
   }
 
   return (
@@ -34,49 +38,56 @@ export const LearningTopicsTable: React.FC<LearningTopicsTableProps> = ({
           <thead>
             <tr className="table-header-row">
               <th className="table-header-cell">ID</th>
-              <th className="table-header-cell">Изобр.</th>
+              <th className="table-header-cell">Изображение</th>
               <th className="table-header-cell">Название</th>
               <th className="table-header-cell">Описание</th>
-              <th className="table-header-cell">Опыт</th>
-              <th className="table-header-cell">Порядок</th>
-              {/* <th className="table-header-cell">Прогресс</th>  Если захотим показывать completion_percentage */}
+              <th className="table-header-cell" style={{ textAlign: 'center' }}>Порядок</th>
+              <th className="table-header-cell" style={{ textAlign: 'center' }}>Опыт</th>
               <th className="table-header-cell table-header-cell-actions">Действия</th>
             </tr>
           </thead>
           <tbody>
-            {learningTopics.map((topic) => (
-              <tr key={topic.id} className="table-body-row">
-                <td className="table-body-cell">{topic.id}</td>
-                <td className="table-body-cell">
-                  {topic.image ? (
-                    <img src={topic.image} alt={topic.name} className="table-image-thumbnail" />
-                  ) : ( <span className="table-no-image">Нет</span> )}
-                </td>
-                <td className="table-body-cell">{topic.name}</td>
-                <td className="table-body-cell table-cell-description">
-                  {(topic.description && topic.description.length > 50)
-                    ? `${topic.description.substring(0, 50)}...`
-                    : topic.description || '—'}
-                </td>
-                <td className="table-body-cell">{topic.experience_points}</td>
-                <td className="table-body-cell">{topic.order}</td>
-                {/* <td className="table-body-cell">{topic.completion_percentage !== undefined ? `${topic.completion_percentage}%` : 'N/A'}</td> */}
-                <td className="table-body-cell">
-                  <div className="table-actions-container">
-                    <Button variant="link" onClick={() => onEdit(topic)} disabled={isLoading} size="sm">Ред.</Button>
-                    <Button variant="link" className="table-action-button-delete" onClick={() => onDelete(topic.id)} disabled={isLoading} size="sm">Удал.</Button>
-                  </div>
-                </td>
-              </tr>
-            ))}
+            {topics.map((topic) => {
+              const imageUrl = createImageUrl(topic.image);
+              return (
+                <tr key={topic.id} className="table-body-row">
+                  <td className="table-body-cell">{topic.id}</td>
+                  <td className="table-body-cell">
+                    {imageUrl ? (
+                      <img src={imageUrl} alt={topic.name} className="table-image-thumbnail" />
+                    ) : (
+                      <span className="table-no-image">Нет</span>
+                    )}
+                  </td>
+                  <td className="table-body-cell">{topic.name}</td>
+                  <td className="table-body-cell table-cell-description">
+                    {topic.description ? `${topic.description.substring(0, 80)}...` : '—'}
+                  </td>
+                  <td className="table-body-cell" style={{ textAlign: 'center' }}>{topic.order}</td>
+                  <td className="table-body-cell" style={{ textAlign: 'center' }}>{topic.experience_points}</td>
+                  <td className="table-body-cell">
+                    <div className="table-actions-container">
+                      <Button variant="link" size="sm" onClick={() => onEdit(topic)}>Ред.</Button>
+                      <Button variant="link" size="sm" className="table-action-button-delete" onClick={() => onDelete(topic.id)}>Удал.</Button>
+                    </div>
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>
-      {totalItems > 0 && (
+      
+      {(canGoPrevious || canGoNext) && (
         <div className="table-pagination-wrapper">
           <Pagination
-            currentPage={currentPage} totalItems={totalItems} itemsPerPage={itemsPerPage}
-            handlePreviousPage={handlePreviousPage} handleNextPage={handleNextPage}
+            currentPage={currentPage}
+            totalItems={-1} // -1 для "слепой" пагинации
+            itemsPerPage={0} // не используется в "слепой" пагинации
+            handlePreviousPage={handlePreviousPage}
+            handleNextPage={handleNextPage}
+            canGoNext={canGoNext}
+            canGoPrevious={canGoPrevious}
             isLoading={isLoading}
           />
         </div>

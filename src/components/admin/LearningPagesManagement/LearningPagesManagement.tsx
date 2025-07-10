@@ -1,73 +1,64 @@
-// src/components/admin/LearningPagesManagement/LearningPagesManagement.tsx
+// --- Путь: src/components/admin/LearningPagesManagement/LearningPagesManagement.tsx ---
+
 import React from 'react';
+import { useLearningPagesManagement } from '../../../hooks/admin/LearningPagesManagement/useLearningPagesManagement';
 import { LearningPagesHeader } from './LearningPagesHeader';
 import { LearningPagesTable } from './LearningPagesTable';
 import { LearningPageForm } from './LearningPageForm';
-import { useLearningPagesManagement } from '../../../hooks/admin/LearningPagesManagement/useLearningPagesManagement';
+import { Modal } from '../../ui/Modal/Modal';
 import '../../../styles/admin/ui/PageLayout.css';
 
 export const LearningPagesManagement: React.FC = () => {
   const {
-    learningPages,
-    loading,
-    error,
-    currentPage,
-    totalItems,
-    itemsPerPage,
-    handlePreviousPage,
-    handleNextPage,
-    currentSubtopicId,       // Число или null
-    setCurrentSubtopicId,    // Функция (string) => void
-    // subtopicOptions,      // Если будет API для подтем
-    // loadingSubtopics,     // Если будет API для подтем
-    handleEdit,
-    handleShowAddForm,
-    handleDelete,
-    handleFormSuccess,
-    showForm,
-    setShowForm,
-    learningPageToEdit,
-    subtopicIdForForm,       // Передаем в форму
+    topics, selectedTopicId, handleTopicChange,
+    subtopics, selectedSubtopicId, handleSubtopicChange,
+    pages, error, isLoading,
+    handleEdit, handleDelete, handleShowAddForm, handleFormSuccess,
+    showForm, setShowForm, pageToEdit,
+    currentPage, canGoNext, canGoPrevious,
+    handleNextPage, handlePreviousPage,
+    parentSubtopicId, // ID подтемы для создания новой страницы
   } = useLearningPagesManagement();
-
-  // Преобразуем currentSubtopicId (number | null) в строку для инпута
-  const currentSubtopicIdInputValue = currentSubtopicId === null ? "" : currentSubtopicId.toString();
 
   return (
     <div className="page-container">
       <LearningPagesHeader
-        isLoading={loading /*|| loadingSubtopics*/}
+        isLoading={isLoading}
         onShowForm={handleShowAddForm}
-        currentSubtopicIdInput={currentSubtopicIdInputValue}
-        onSubtopicIdChange={setCurrentSubtopicId} // Передаем обработчик из хука
-        // subtopicOptions={subtopicOptions}
-        // loadingSubtopics={loadingSubtopics}
-        // selectedSubtopicName={subtopicOptions?.find(opt => opt.id === currentSubtopicId)?.name}
+        topics={topics}
+        subtopics={subtopics}
+        selectedTopicId={selectedTopicId}
+        selectedSubtopicId={selectedSubtopicId}
+        onTopicChange={handleTopicChange}
+        onSubtopicChange={handleSubtopicChange}
+        isAddButtonDisabled={!selectedSubtopicId} // Кнопка "Добавить" неактивна, пока не выбрана подтема
       />
 
-    
-      {showForm && (
+      <Modal
+        isOpen={showForm}
+        onClose={() => setShowForm(false)}
+        title={pageToEdit ? 'Редактировать страницу' : 'Создать новую страницу'}
+        size="xl" // Используем большой размер для конструктора
+      >
         <LearningPageForm
-          setShowForm={setShowForm}
-          learningPageToEdit={learningPageToEdit}
+          pageToEdit={pageToEdit}
           onSuccess={handleFormSuccess}
-          subtopicIdForCreate={subtopicIdForForm} // <--- Теперь типы должны совпадать
+          onCancel={() => setShowForm(false)}
+          parentSubtopicId={parentSubtopicId} // Передаем ID подтемы для новой страницы
         />
-      )}
-
+      </Modal>
 
       <LearningPagesTable
-        learningPages={learningPages}
-        isLoading={loading}
-        error={error} // Передаем ошибку в таблицу
+        pages={pages}
+        isLoading={isLoading}
+        error={error}
         onEdit={handleEdit}
         onDelete={handleDelete}
         currentPage={currentPage}
-        totalItems={totalItems} // Помним, что это будет неточным
-        itemsPerPage={itemsPerPage}
-        handlePreviousPage={handlePreviousPage}
+        canGoNext={canGoNext}
+        canGoPrevious={canGoPrevious}
         handleNextPage={handleNextPage}
-        // currentSubtopicId={currentSubtopicId} // Можно передать для информации
+        handlePreviousPage={handlePreviousPage}
       />
     </div>
   );

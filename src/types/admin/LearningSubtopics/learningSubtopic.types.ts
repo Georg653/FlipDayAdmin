@@ -1,5 +1,7 @@
-// src/types/admin/LearningSubtopics/learningSubtopic.types.ts
+// --- Путь: src/types/admin/LearningSubtopics/learningSubtopic.types.ts ---
 
+// Тип, описывающий данные, как они приходят с бэкенда
+// На основе вашей схемы LearningSubtopicSchema
 export interface LearningSubtopic {
   id: number;
   topic_id: number;
@@ -8,60 +10,77 @@ export interface LearningSubtopic {
   experience_points: number;
   image: string | null;
   order: number;
-  is_completed: boolean;
-  is_unlocked: boolean;
+  // Поля is_completed и is_unlocked в админке не так важны, но пусть будут
+  is_completed?: boolean;
+  is_unlocked?: boolean;
 }
 
-export interface LearningSubtopicCreatePayload {
-  name: string;
-  description?: string | null;
-  experience_points: number;
-  order: number;
-}
-
-export type LearningSubtopicUpdatePayload = Partial<LearningSubtopicCreatePayload>;
+// =============================================================================
+// ТИПЫ ДЛЯ ФОРМЫ
+// =============================================================================
 
 export interface LearningSubtopicFormData {
-  topic_id: string;
   name: string;
   description: string;
   experience_points: string;
   order: string;
+  topic_id: string; // ID родительской темы, в селекте это будет строка
+
+  image_url: string | null;
   image_file: File | null;
-  image_preview_url?: string | null;
-  existing_image_url?: string | null;
+  image_local_url: string | null;
+  remove_image: boolean;
 }
 
-export const initialLearningSubtopicFormData: LearningSubtopicFormData = {
-  topic_id: "",
-  name: "",
-  description: "",
-  experience_points: "0",
-  order: "0",
+// Начальное состояние для формы (topic_id будет устанавливаться извне)
+export const initialLearningSubtopicFormData: Omit<LearningSubtopicFormData, 'topic_id'> = {
+  name: '',
+  description: '',
+  experience_points: '10',
+  order: '0',
+  image_url: null,
   image_file: null,
-  image_preview_url: null,
-  existing_image_url: null,
+  image_local_url: null,
+  remove_image: false,
 };
 
-export interface LearningSubtopicFormOptions {
-  topicIdForCreate?: number | null; // Именно number | null
-  onSuccess?: (learningSubtopic: LearningSubtopic) => void;
-  learningSubtopicToEdit?: LearningSubtopic | null;
+
+// =============================================================================
+// ТИПЫ ДЛЯ PAYLOAD (то, что уходит на бэк)
+// =============================================================================
+
+// Payload для создания (topic_id не нужен, т.к. он в URL)
+export interface LearningSubtopicCreatePayload {
+  name: string;
+  description: string | null;
+  experience_points: number;
+  order: number;
+  image_url: string | null;
 }
 
-export interface PaginatedLearningSubtopicsResponse {
-  items: LearningSubtopic[];
-  total: number;
-  limit?: number;
-  offset?: number;
+// Payload для обновления (topic_id опционален, если мы хотим переместить подтему)
+export interface LearningSubtopicUpdatePayload {
+  name?: string;
+  description?: string | null;
+  experience_points?: number;
+  order?: number;
+  topic_id?: number; // Для перемещения между темами
+  image_url?: string | null;
 }
 
+// =============================================================================
+// ВСПОМОГАТЕЛЬНЫЕ ТИПЫ
+// =============================================================================
+
+// Параметры для фильтрации списка подтем
 export interface LearningSubtopicFilterParams {
   limit?: number;
   offset?: number;
+  // Фильтра по названию пока нет, но можно будет добавить
 }
 
+// Тип для опции в селекте выбора темы
 export interface TopicOption {
-  id: number;
-  name: string;
+  value: string;
+  label: string;
 }

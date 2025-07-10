@@ -1,41 +1,48 @@
-// src/services/admin/api/endpoints.ts
+// --- Путь: src/services/admin/api/endpoints.ts ---
 
 export const ENDPOINTS = {
   // AUTHENTICATION
-  LOGIN: ``, // Путь для логина относительно baseURL (если он есть в axiosInstance для auth)
-             // или это может быть полный URL, если auth на другом сервисе/префиксе
-  REGISTER: `register/`, 
+  LOGIN: ``, // Логин на baseURL /v1/admin/
+  REGISTER: `register/`,
   TOKEN_REFRESH: `token/refresh/`,
-  PASSWORD_RESET_CONFIRM: `password-reset/confirm/`,
   
+  // --- ОБЩИЕ РЕСУРСЫ (здесь везде нужен слеш на конце) ---
+
   // ACHIEVEMENTS
   ACHIEVEMENTS: `achievements/`,
-  ACHIEVEMENT_DETAIL: (achievementId: number) => `achievements/${achievementId}/`,
+  ACHIEVEMENT_DETAIL: (id: number) => `achievements/${id}/`,
 
   // NEWS
   NEWS_LIST: `news/`,
-  NEWS_DETAIL: (newsId: number) => `news/${newsId}/`,
+  NEWS_DETAIL: (id: number) => `news/${id}/`,
 
   // STORIES
   STORIES: `stories/`,
-  STORY_DETAIL: (storyId: number) => `stories/${storyId}/`,
+  STORY_DETAIL: (id: number) => `stories/${id}/`,
 
   // ROUTE CATEGORIES
   ROUTE_CATEGORIES: `route-categories/`,
-  ROUTE_CATEGORY_DETAIL: (categoryId: number) => `route-categories/${categoryId}/`,
+  ROUTE_CATEGORY_DETAIL: (id: number) => `route-categories/${id}/`,
 
+  // --- ИЗМЕНЕННАЯ СЕКЦИЯ ---
   // POINTS
   POINTS: `points/`,
-  POINT_DETAIL: (pointId: number) => `points/${pointId}/`,
-  POINT_CONTENT: (pointId: number) => `points/${pointId}/content/`,
+  POINT_DETAIL: (id: number) => `points/${id}/`,
+  POINT_CONTENT: (id: number) => `points/${id}/content/`, // <--- ДОБАВЛЕНО
 
-  // ROUTES (НОВАЯ СЕКЦИЯ - ДОБАВЛЕНА)
+  // ROUTES
   ROUTES: `routes/`,
-  ROUTE_DETAIL: (routeId: number) => `routes/${routeId}/`,
+  ROUTE_DETAIL: (id: number) => `routes/${id}/`,
+  
+  // PROPOSALS
+  PROPOSALS: `proposals/`,
+  PROPOSAL_DETAIL: (id: string) => `proposals/${id}/`,
+  
+  // --- ВЛОЖЕННЫЕ РЕСУРСЫ ---
 
   // LEARNING TOPICS
-  LEARNING_TOPICS_LIST: `topics/`, // Убедись, что префикс /learning- или подобный не нужен, если они вложены
-  LEARNING_TOPIC_DETAIL: (topicId: number) => `topics/${topicId}/`,
+  LEARNING_TOPICS_LIST: `topics/`,
+  LEARNING_TOPIC_DETAIL: (id: number) => `topics/${id}/`,
 
   // LEARNING SUBTOPICS
   LEARNING_SUBTOPICS_BY_TOPIC: (topicId: number) => `subtopics/topics/${topicId}/subtopics/`,
@@ -44,9 +51,4 @@ export const ENDPOINTS = {
   // LEARNING PAGES
   LEARNING_PAGES_BY_SUBTOPIC: (subtopicId: number) => `learning-pages/subtopics/${subtopicId}/pages/`,
   LEARNING_PAGE_DETAIL: (pageId: number) => `learning-pages/pages/${pageId}/`,
-
-  // PROPOSALS
-  PROPOSALS: `proposals/`,
-  PROPOSAL_DETAIL: (proposalId: string) => `proposals/${proposalId}/`,
-  PROPOSAL_UPDATE_STATUS: (proposalId: string) => `proposals/${proposalId}/status/`,
 };

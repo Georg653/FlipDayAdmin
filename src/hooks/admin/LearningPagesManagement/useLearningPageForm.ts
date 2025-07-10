@@ -1,103 +1,111 @@
-// src/hooks/admin/LearningPagesManagement/useLearningPageForm.ts
-import { useState, useEffect, useCallback } from 'react';
-import type {
-  LearningPage,
-  LearningPageCreatePayload,
-  LearningPageUpdatePayload,
-  LearningPageFormData,
-  LearningPageFormOptions,
-  LearningPageContentBlockAPI,
-  LearningPageContentBlockUIData,
-} from '../../../types/admin/LearningPages/learningPage.types';
-import { initialLearningPageFormData } from '../../../types/admin/LearningPages/learningPage.types';
+// --- Путь: src/hooks/admin/LearningPagesManagement/useLearningPageForm.ts ---
+// ФИНАЛЬНАЯ ВЕРСИЯ. ВСЯ ЛОГИКА ВНУТРИ ХУКА.
+
+import { useState, useEffect } from 'react';
 import { LearningPagesApi } from '../../../services/admin/LearningPages/learningPagesApi';
+import { LearningTopicsApi } from '../../../services/admin/LearningTopics/learningTopicsApi';
+import { LearningSubtopicsApi } from '../../../services/admin/LearningSubtopics/learningSubtopicsApi';
+import { createImageUrl } from '../../../utils/media';
 
-const generateLocalId = () => `local_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+import { createInitialBlock } from '../../../features/ContentEditor/contentEditor.helpers';
+import type { ApiContentBlock, ContentBlockFormData } from '../../../types/common/content.types';
+import type { 
+    LearningPage, LearningPageFormData, LearningPageCreateUpdatePayload,
+    TopicOption, SubtopicOption 
+} from '../../../types/admin/LearningPages/learningPage.types';
 
-export const useLearningPageForm = (options: LearningPageFormOptions) => {
-  const { onSuccess, learningPageToEdit, subtopicIdForCreate } = options;
+interface UseLearningPageFormOptions {
+  pageToEdit: LearningPage | null;
+  onSuccess: (page: LearningPage) => void;
+  parentSubtopicId: number | null;
+}
 
-  const [formData, setFormData] = useState<LearningPageFormData>(initialLearningPageFormData);
-  const [formError, setFormError] = useState<string | null>(null);
+export const useLearningPageForm = ({ pageToEdit, onSuccess, parentSubtopicId }: UseLearningPageFormOptions) => {
+  const [formData, setFormData] = useState<LearningPageFormData>({ page_number: '1', subtopic_id: '', content: [] });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [formError, setFormError] = useState<string | null>(null);
 
-  const resetForm = useCallback(() => {
-    setFormData(prev => ({
-      ...initialLearningPageFormData,
-      subtopic_id: subtopicIdForCreate?.toString() || prev.subtopic_id || "",
-      current_content_blocks: [],
-    }));
-    setFormError(null);
-  }, [subtopicIdForCreate]);
+  // --- НОВАЯ ЛОГИКА ДЛЯ КАСКАДНЫХ СЕЛЕКТОВ, ПЕРЕНЕСЕННАЯ ВНУТРЬ ХУКА ---
+  const [topics, setTopics] = useState<TopicOption[]>([]);
+  const [subtopics, setSubtopics] = useState<SubtopicOption[]>([]);
+  const [selectedTopicInForm, setSelectedTopicInForm] = useState<string | null>(null);
+  const [isCascadeLoading, setIsCascadeLoading] = useState(false);
 
+  // 1. Загрузка всех тем при монтировании
   useEffect(() => {
-    if (learningPageToEdit) {
-      let currentSubtopicId = "";
-      if (options.subtopicIdForCreate && learningPageToEdit) {
-        currentSubtopicId = options.subtopicIdForCreate.toString();
-      } else if (formData.subtopic_id) {
-        currentSubtopicId = formData.subtopic_id;
-      }
-      
-      setFormData({
-        subtopic_id: currentSubtopicId,
-        page_number: learningPageToEdit.page_number.toString(),
-        current_content_blocks: (learningPageToEdit.content || []).map(block => ({
-          ...block,
-          _localId: (block as any).id || generateLocalId(), // Используем API id (если есть в блоке) или генерируем локальный
-        })),
-      });
-      setFormError(null);
+    setIsCascadeLoading(true);
+    LearningTopicsApi.getTopics({ limit: 1000 })
+      .then(data => setTopics(data.map(t => ({ value: String(t.id), label: t.name }))))
+      .finally(() => setIsCascadeLoading(false));
+  }, []);
+
+  // 2. Загрузка подтем при выборе темы
+  useEffect(() => {
+    if (selectedTopicInForm) {
+      setIsCascadeLoading(true);
+      LearningSubtopicsApi.getSubtopicsByTopicId(Number(selectedTopicInForm), { limit: 1000 })
+        .then(data => setSubtopics(data.map(st => ({ value: String(st.id), label: st.name }))))
+        .finally(() => setIsCascadeLoading(false));
     } else {
-      resetForm();
+      setSubtopics([]);
     }
-  }, [learningPageToEdit, options.subtopicIdForCreate, resetForm]);
+  }, [selectedTopicInForm]);
 
-
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (formError) setFormError(null);
-  };
-
-  const addContentBlock = (newBlockData: Omit<LearningPageContentBlockUIData, '_localId'>) => {
-    const newBlockWithId: LearningPageContentBlockUIData = {
-      ...newBlockData,
-      _localId: generateLocalId(),
-    };
-    setFormData(prev => ({
-      ...prev,
-      current_content_blocks: [...prev.current_content_blocks, newBlockWithId],
-    }));
-  };
-
-  const updateContentBlock = (localId: string, updatedBlockData: LearningPageContentBlockUIData) => {
-    setFormData(prev => ({
-      ...prev,
-      current_content_blocks: prev.current_content_blocks.map(block =>
-        block._localId === localId ? { ...block, ...updatedBlockData, _localId: localId } : block // Сохраняем _localId
-      ),
-    }));
-  };
-  
-  const deleteContentBlock = (localId: string) => {
-    setFormData(prev => ({
-      ...prev,
-      current_content_blocks: prev.current_content_blocks.filter(block => block._localId !== localId),
-    }));
-  };
-
-  const moveContentBlock = (fromIndex: number, toIndex: number) => {
-    setFormData(prev => {
-      if (fromIndex < 0 || fromIndex >= prev.current_content_blocks.length || 
-          toIndex < 0 || toIndex >= prev.current_content_blocks.length) {
-        return prev; // Индексы вне диапазона
+  // 3. Первоначальная установка состояния при редактировании
+  useEffect(() => {
+    const setInitialState = async () => {
+      if (pageToEdit && topics.length > 0) {
+        setIsCascadeLoading(true);
+        try {
+          const parentSubtopic = await LearningSubtopicsApi.getSubtopicById(pageToEdit.subtopic_id);
+          const parentTopicId = String(parentSubtopic.topic_id);
+          setSelectedTopicInForm(parentTopicId);
+          // Загрузка подтем для этой темы уже произойдет в эффекте выше
+        } catch (error) {
+          console.error("Ошибка при поиске родительской темы:", error);
+        } finally {
+          setIsCascadeLoading(false);
+        }
       }
-      const updatedBlocks = [...prev.current_content_blocks];
-      const [movedBlock] = updatedBlocks.splice(fromIndex, 1);
-      updatedBlocks.splice(toIndex, 0, movedBlock);
-      return { ...prev, current_content_blocks: updatedBlocks };
-    });
+    };
+    setInitialState();
+  }, [pageToEdit, topics]);
+
+  // 4. Основной useEffect для установки formData
+  useEffect(() => {
+    if (pageToEdit) {
+      const contentForForm: ContentBlockFormData[] = pageToEdit.content.map(apiBlock => ({...apiBlock, id: crypto.randomUUID(), file: null} as any)); // Упрощенный маппинг
+      setFormData({
+        page_number: String(pageToEdit.page_number),
+        subtopic_id: String(pageToEdit.subtopic_id),
+        content: contentForForm,
+      });
+    } else if (parentSubtopicId) {
+      setFormData({ page_number: '1', subtopic_id: String(parentSubtopicId), content: [createInitialBlock('text')] });
+    }
+  }, [pageToEdit, parentSubtopicId]);
+  
+  // --- ОБРАБОТЧИКИ ---
+  const handleTopicInFormChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    const topicId = e.target.value;
+    setSelectedTopicInForm(topicId);
+    setFormData(prev => ({ ...prev, subtopic_id: '' })); 
+  };
+  const handleSubtopicInFormChange = (e: React.ChangeEvent<HTMLSelectElement>) => {
+    setFormData(prev => ({ ...prev, subtopic_id: e.target.value }));
+  };
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const { name, value } = e.target;
+      setFormData(prev => ({ ...prev, [name]: value }));
+  }
+  const addBlock = (type: ContentBlockFormData['type']) => setFormData(prev => ({ ...prev, content: [...prev.content, createInitialBlock(type)] }));
+  const removeBlock = (id: string) => setFormData(prev => ({ ...prev, content: prev.content.filter(block => block.id !== id) }));
+  const updateBlock = (id: string, newBlockData: Partial<ContentBlockFormData>) => setFormData(prev => ({ ...prev, content: prev.content.map(block => (block.id === id ? { ...block, ...newBlockData } : block)) }));
+  const moveBlock = (fromIndex: number, toIndex: number) => {
+    const newContent = [...formData.content];
+    const [movedItem] = newContent.splice(fromIndex, 1);
+    newContent.splice(toIndex, 0, movedItem);
+    setFormData(prev => ({ ...prev, content: newContent }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -105,82 +113,61 @@ export const useLearningPageForm = (options: LearningPageFormOptions) => {
     setIsSubmitting(true);
     setFormError(null);
 
-    if (!formData.subtopic_id.trim() || !formData.page_number.trim()) {
-      setFormError('ID Подтемы и Номер страницы обязательны.');
+    const pageNumber = parseInt(formData.page_number, 10);
+    if (isNaN(pageNumber) || pageNumber < 1) {
+      setFormError('Номер страницы должен быть положительным числом.');
       setIsSubmitting(false); return;
     }
-    const subtopicIdNum = parseInt(formData.subtopic_id, 10);
-    const pageNumberNum = parseInt(formData.page_number, 10);
-
-    if (isNaN(subtopicIdNum) || subtopicIdNum <= 0) {
-      setFormError('ID Подтемы должен быть положительным числом.'); setIsSubmitting(false); return;
-    }
-    if (isNaN(pageNumberNum) || pageNumberNum <= 0) {
-      setFormError('Номер страницы должен быть положительным числом.'); setIsSubmitting(false); return;
+    const subtopicId = parseInt(formData.subtopic_id, 10);
+    if (isNaN(subtopicId)) {
+        setFormError('Необходимо выбрать подтему.');
+        setIsSubmitting(false); return;
     }
 
-    const contentForAPI: LearningPageContentBlockAPI[] = formData.current_content_blocks.map(uiBlock => {
-      const { _localId, ...apiBlock } = uiBlock;
-      return apiBlock as LearningPageContentBlockAPI;
-    });
+    const contentFiles: File[] = [];
+    const payloadContent: ApiContentBlock[] = formData.content.map(formBlock => {
+        if (formBlock.file) contentFiles.push(formBlock.file);
+        if (formBlock.items) formBlock.items.forEach(item => { if (item.file) contentFiles.push(item.file); });
+        
+        switch (formBlock.type) {
+            case 'text': return { type: 'text', content: formBlock.content || '' };
+            case 'heading': return { type: 'heading', content: formBlock.content || '', level: formBlock.level || 2 };
+            case 'image': case 'video': case 'audio': return { type: formBlock.type, src: formBlock.file ? '' : formBlock.src || null };
+            case 'album': case 'slider':
+                const apiItems = (formBlock.items || []).map(item => (item.file ? '' : item.url || null)).filter((url): url is string => url !== null);
+                return { type: formBlock.type, src: apiItems };
+            case 'test':
+                const correctOption = (formBlock.options || []).find(opt => opt.isCorrect);
+                return {
+                    type: 'test', question: formBlock.question || '', options: (formBlock.options || []).map(opt => ({ id: opt.id, text: opt.text })),
+                    message: formBlock.message || '', correct_option_id: correctOption?.id,
+                };
+            default: const exhaustiveCheck: never = formBlock.type; console.warn(`Неизвестный тип: ${exhaustiveCheck}`); return null as any;
+        }
+    }).filter((b): b is ApiContentBlock => b !== null);
 
-    if (contentForAPI.length === 0 && !learningPageToEdit) {
-      setFormError('Необходимо добавить хотя бы один блок контента.');
-      setIsSubmitting(false); return;
-    }
+    const payload: LearningPageCreateUpdatePayload = { page_number: pageNumber, content: payloadContent };
 
     try {
       let result: LearningPage;
-      const isEditing = !!learningPageToEdit;
-
-      if (isEditing && learningPageToEdit) {
-        const payload: LearningPageUpdatePayload = {};
-        let hasChanges = false;
-        if (pageNumberNum !== learningPageToEdit.page_number) {
-          payload.page_number = pageNumberNum; hasChanges = true;
-        }
-        const originalApiContent = (learningPageToEdit.content || []).map(b => {
-            const tempBlock = {...b} as Partial<LearningPageContentBlockUIData>;
-            delete tempBlock._localId;
-            return tempBlock as LearningPageContentBlockAPI;
-        });
-        if (JSON.stringify(contentForAPI) !== JSON.stringify(originalApiContent)) {
-          payload.content = contentForAPI; hasChanges = true;
-        }
-        if (!hasChanges) {
-          setIsSubmitting(false); onSuccess?.(learningPageToEdit); return;
-        }
-        result = await LearningPagesApi.updateLearningPage(learningPageToEdit.id, payload);
+      if (pageToEdit) {
+        result = await LearningPagesApi.updatePage(pageToEdit.id, payload, contentFiles);
       } else {
-        const payload: LearningPageCreatePayload = {
-          page_number: pageNumberNum,
-          content: contentForAPI,
-        };
-        result = await LearningPagesApi.createLearningPage(subtopicIdNum, payload);
+        result = await LearningPagesApi.createPage(subtopicId, payload, contentFiles);
       }
-      onSuccess?.(result);
-    } catch (error: any) {
-      const message = error.response?.data?.detail || `Не удалось ${learningPageToEdit ? 'обновить' : 'создать'} страницу обучения.`;
-      let errorMessage = "Произошла ошибка.";
-      if (typeof message === 'string') {errorMessage = message;}
-      else if (Array.isArray(message)) {errorMessage = message.map(err => `${err.loc?.join(' -> ') || 'поле'} - ${err.msg}`).join('; ');}
-      setFormError(errorMessage);
+      onSuccess(result);
+    } catch (err: any) {
+      const detail = err.response?.data?.detail;
+      setFormError(typeof detail === 'object' ? JSON.stringify(detail, null, 2) : detail || 'Произошла ошибка.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return {
-    formData,
-    setFormData,
-    handleChange,
-    addContentBlock,
-    updateContentBlock,
-    deleteContentBlock,
-    moveContentBlock,
-    handleSubmit,
-    isSubmitting,
-    formError,
-    resetForm,
+    formData, isSubmitting, formError, handleSubmit, handleChange, addBlock, removeBlock, updateBlock, moveBlock,
+    // ВОЗВРАЩАЕМ ВСЁ ДЛЯ КАСКАДНЫХ СЕЛЕКТОВ
+    topics, subtopics, selectedTopicInForm, isCascadeLoading,
+    handleTopicInFormChange, handleSubtopicInFormChange,
   };
 };

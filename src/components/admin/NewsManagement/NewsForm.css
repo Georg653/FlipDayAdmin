@@ -1,0 +1,33 @@
+/* --- Путь: src/components/admin/NewsManagement/NewsForm.css --- */
+
+.news-form-grid {
+  display: grid;
+  grid-template-columns: 350px 1fr;
+  gap: 2rem;
+  width: 100%;
+}
+
+.form-column-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.form-column-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.content-blocks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.5rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  min-height: 400px;
+  max-height: 70vh;
+  overflow-y: auto;
+}

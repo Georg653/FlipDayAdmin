@@ -1,60 +1,69 @@
-// src/hooks/admin/RouteCategories/useRouteCategoryForm.ts
-import { useState, useEffect, useCallback } from 'react';
+// --- Путь: src/hooks/admin/RouteCategories/useRouteCategoryForm.ts ---
+
+import { useState, useEffect } from 'react';
 import type {
   RouteCategory,
-  RouteCategoryCreatePayload,
-  RouteCategoryUpdatePayload,
   RouteCategoryFormData,
-  RouteCategoryFormOptions,
+  RouteCategoryPayload,
 } from '../../../types/admin/RouteCategories/routeCategory.types';
-import { initialRouteCategoryFormData } from '../../../types/admin/RouteCategories/routeCategory.types';
 import { RouteCategoriesApi } from '../../../services/admin/RouteCategories/routeCategoriesApi';
-// import { useNotification } from '../../../contexts/admin/NotificationContext'; // Если используешь
 
-export const useRouteCategoryForm = (options: RouteCategoryFormOptions) => {
-  const { onSuccess, categoryToEdit } = options;
-  // const { showNotification } = useNotification();
+// Начальное, пустое состояние для формы
+const initialFormData: RouteCategoryFormData = {
+  name: '',
+  description: '',
+  image_file: null,
+  image_preview_url: null,
+  remove_image: false,
+};
 
-  const [formData, setFormData] = useState<RouteCategoryFormData>(initialRouteCategoryFormData);
-  const [formError, setFormError] = useState<string | null>(null);
+// ИСПРАВЛЕННЫЙ ИНТЕРФЕЙС
+interface UseRouteCategoryFormOptions {
+  categoryToEdit: RouteCategory | null;
+  onSuccess: () => void; // onSuccess теперь не принимает аргументов
+}
+
+export const useRouteCategoryForm = ({ categoryToEdit, onSuccess }: UseRouteCategoryFormOptions) => {
+  const [formData, setFormData] = useState<RouteCategoryFormData>(initialFormData);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const resetForm = useCallback(() => {
-    setFormData(initialRouteCategoryFormData);
-    setFormError(null);
-  }, []);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
     if (categoryToEdit) {
       setFormData({
         name: categoryToEdit.name,
-        description: categoryToEdit.description,
+        description: categoryToEdit.description || '',
         image_file: null,
-        image_preview_url: categoryToEdit.image, // Показываем текущее изображение
-        existing_image_url: categoryToEdit.image,
+        image_preview_url: categoryToEdit.image,
+        remove_image: false,
       });
-      setFormError(null);
     } else {
-      resetForm();
+      setFormData(initialFormData);
     }
-  }, [categoryToEdit, resetForm]);
+  }, [categoryToEdit]);
 
-  const handleChange = (
-    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
-  ) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (formError) setFormError(null);
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
-
+  
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    setFormData((prev) => ({
+    setFormData(prev => ({
       ...prev,
       image_file: file,
-      image_preview_url: file ? URL.createObjectURL(file) : prev.existing_image_url,
+      image_preview_url: file ? URL.createObjectURL(file) : prev.image_preview_url,
+      remove_image: !!file ? false : prev.remove_image,
     }));
-    if (formError) setFormError(null);
+  };
+  
+  const handleRemoveImageChange = (checked: boolean) => {
+      setFormData(prev => ({ 
+        ...prev, 
+        remove_image: checked,
+        image_file: checked ? null : prev.image_file,
+        image_preview_url: checked ? null : (prev.image_file ? URL.createObjectURL(prev.image_file) : (categoryToEdit?.image || null)),
+      }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -63,60 +72,38 @@ export const useRouteCategoryForm = (options: RouteCategoryFormOptions) => {
     setFormError(null);
 
     if (!formData.name.trim()) {
-      setFormError('Название категории обязательно.');
+      setFormError('Название не может быть пустым.');
       setIsSubmitting(false);
       return;
     }
 
-    const payload: RouteCategoryCreatePayload = {
-      name: formData.name.trim(),
-      description: formData.description.trim(),
+    const payload: Partial<RouteCategoryPayload> = {
+      name: formData.name,
+      description: formData.description || null,
     };
+    
+    if (formData.image_file || formData.remove_image || !categoryToEdit) {
+        payload.image_url = formData.image_file ? null : formData.image_preview_url;
+    }
 
     try {
-      let result: RouteCategory;
-      const isEditing = !!categoryToEdit;
-
-      if (isEditing && categoryToEdit) {
-        // Формируем payload для обновления только измененных полей, если это необходимо
-        // или передаем весь payload, а API разбирается.
-        // В нашем RouteCategoriesApi.updateRouteCategory мы передаем весь payload из формы
-        const updatePayload: RouteCategoryUpdatePayload = { ...payload };
-        result = await RouteCategoriesApi.updateRouteCategory(
+      if (categoryToEdit) {
+        await RouteCategoriesApi.updateRouteCategory(
           categoryToEdit.id,
-          updatePayload,
-          formData.image_file
-        );
-        // showNotification?.('Категория успешно обновлена!', 'success');
-        console.log('Категория успешно обновлена!');
-      } else {
-        result = await RouteCategoriesApi.createRouteCategory(
           payload,
+          formData.image_file,
+          formData.remove_image
+        );
+      } else {
+        await RouteCategoriesApi.createRouteCategory(
+          payload as RouteCategoryPayload, 
           formData.image_file
         );
-        // showNotification?.('Категория успешно создана!', 'success');
-        console.log('Категория успешно создана!');
       }
-      onSuccess?.(result);
-    } catch (error: any) {
-      console.error("Ошибка сохранения категории:", error);
-      const message = error.response?.data?.detail || `Не удалось ${categoryToEdit ? 'обновить' : 'создать'} категорию.`;
-      let errorMessage = "Произошла неизвестная ошибка.";
-
-      if (typeof message === 'string') {
-        errorMessage = message;
-      } else if (Array.isArray(message) && message.length > 0 && message[0].msg) {
-        errorMessage = message.map(err => `${err.loc?.join('.') || 'поле'} - ${err.msg}`).join('; ');
-      } else if (typeof message === 'object' && message !== null) {
-        // Попытка извлечь сообщение из более сложной структуры ошибки
-        const errorDetails = Object.values(message).flat();
-        if (Array.isArray(errorDetails) && errorDetails.length > 0 && typeof errorDetails[0] === 'string') {
-            errorMessage = errorDetails.join('; ');
-        }
-      }
-      // showNotification?.(errorMessage, 'error');
-      console.error(errorMessage);
-      setFormError(errorMessage);
+      onSuccess();
+    } catch (err: any) {
+      const message = err.response?.data?.detail || 'Произошла ошибка при сохранении.';
+      setFormError(typeof message === 'string' ? message : JSON.stringify(message));
     } finally {
       setIsSubmitting(false);
     }
@@ -124,11 +111,11 @@ export const useRouteCategoryForm = (options: RouteCategoryFormOptions) => {
 
   return {
     formData,
-    handleChange,
-    handleFileChange,
-    handleSubmit,
     isSubmitting,
     formError,
-    resetForm,
+    handleChange,
+    handleFileChange,
+    handleRemoveImageChange,
+    handleSubmit,
   };
 };

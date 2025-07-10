@@ -1,137 +1,156 @@
-// src/hooks/admin/LearningSubtopicsManagement/useLearningSubtopicForm.ts
-import { useState, useEffect, useCallback } from 'react';
+// --- Путь: src/hooks/admin/LearningSubtopicsManagement/useLearningSubtopicForm.ts ---
+
+import { useState, useEffect } from 'react';
 import type {
   LearningSubtopic,
+  LearningSubtopicFormData,
   LearningSubtopicCreatePayload,
   LearningSubtopicUpdatePayload,
-  LearningSubtopicFormData,
-  LearningSubtopicFormOptions,
 } from '../../../types/admin/LearningSubtopics/learningSubtopic.types';
 import { initialLearningSubtopicFormData } from '../../../types/admin/LearningSubtopics/learningSubtopic.types';
 import { LearningSubtopicsApi } from '../../../services/admin/LearningSubtopics/learningSubtopicsApi';
+import { createImageUrl } from '../../../utils/media';
 
-export const useLearningSubtopicForm = (options: LearningSubtopicFormOptions) => {
-  const { onSuccess, learningSubtopicToEdit, topicIdForCreate } = options;
+interface UseLearningSubtopicFormOptions {
+  subtopicToEdit: LearningSubtopic | null;
+  onSuccess: (subtopic: LearningSubtopic) => void;
+  // Передаем ID родительской темы, чтобы установить его при создании новой подтемы
+  parentTopicId: number | null; 
+}
 
-  const [formData, setFormData] = useState<LearningSubtopicFormData>(initialLearningSubtopicFormData);
-  const [formError, setFormError] = useState<string | null>(null);
+export const useLearningSubtopicForm = ({ subtopicToEdit, onSuccess, parentTopicId }: UseLearningSubtopicFormOptions) => {
+  // Инициализируем topic_id как пустую строку, чтобы React-Select работал корректно
+  const [formData, setFormData] = useState<LearningSubtopicFormData>({ ...initialLearningSubtopicFormData, topic_id: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const resetForm = useCallback(() => {
-    setFormData(prev => ({
-      ...initialLearningSubtopicFormData,
-      topic_id: topicIdForCreate?.toString() || prev.topic_id || "",
-    }));
-    setFormError(null);
-  }, [topicIdForCreate]);
+  const [formError, setFormError] = useState<string | null>(null);
 
   useEffect(() => {
-    if (learningSubtopicToEdit) {
-      let currentTopicId = "";
-      if (options.topicIdForCreate && learningSubtopicToEdit) {
-          currentTopicId = options.topicIdForCreate.toString();
-      } else if (formData.topic_id && formData.topic_id !== initialLearningSubtopicFormData.topic_id) {
-        currentTopicId = formData.topic_id;
-      } else {
-        currentTopicId = learningSubtopicToEdit.topic_id.toString();
-      }
-
+    if (subtopicToEdit) {
+      // Режим редактирования: заполняем форму данными из subtopicToEdit
+      const imageUrl = createImageUrl(subtopicToEdit.image);
       setFormData({
-        topic_id: currentTopicId,
-        name: learningSubtopicToEdit.name,
-        description: learningSubtopicToEdit.description || "",
-        experience_points: learningSubtopicToEdit.experience_points.toString(),
-        order: learningSubtopicToEdit.order.toString(),
+        name: subtopicToEdit.name,
+        description: subtopicToEdit.description || '',
+        experience_points: String(subtopicToEdit.experience_points),
+        order: String(subtopicToEdit.order),
+        topic_id: String(subtopicToEdit.topic_id), // Преобразуем в строку для селекта
+        image_url: subtopicToEdit.image,
         image_file: null,
-        image_preview_url: learningSubtopicToEdit.image,
-        existing_image_url: learningSubtopicToEdit.image,
+        image_local_url: imageUrl,
+        remove_image: false,
       });
-      setFormError(null);
-    } else {
-       setFormData(prev => ({
+    } else if (parentTopicId) {
+      // Режим создания: сбрасываем форму и устанавливаем ID родительской темы
+      setFormData({
         ...initialLearningSubtopicFormData,
-        topic_id: topicIdForCreate?.toString() || prev.topic_id || "",
-      }));
+        topic_id: String(parentTopicId),
+      });
     }
-  }, [learningSubtopicToEdit, options.topicIdForCreate]);
+  }, [subtopicToEdit, parentTopicId]);
 
+  // --- ОБРАБОТЧИКИ ИЗМЕНЕНИЙ В ФОРМЕ ---
 
-  const handleChange = ( e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     const { name, value } = e.target;
-    setFormData((prev) => ({ ...prev, [name]: value }));
-    if (formError) setFormError(null);
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0] || null;
-    setFormData((prev) => ({
-      ...prev,
-      image_file: file,
-      image_preview_url: file ? URL.createObjectURL(file) : prev.existing_image_url,
-    }));
-    if (formError) setFormError(null);
+    setFormData(prev => {
+      if (prev.image_local_url && prev.image_local_url.startsWith('blob:')) {
+        URL.revokeObjectURL(prev.image_local_url);
+      }
+      return {
+        ...prev,
+        image_file: file,
+        image_local_url: file ? URL.createObjectURL(file) : prev.image_url,
+        remove_image: !file,
+      };
+    });
   };
+
+  const handleRemoveImage = (checked: boolean) => {
+    setFormData(prev => ({
+      ...prev,
+      remove_image: checked,
+      image_file: checked ? null : prev.image_file,
+      image_local_url: checked ? null : (prev.image_file ? URL.createObjectURL(prev.image_file) : createImageUrl(prev.image_url)),
+    }));
+  };
+
+  // --- ЛОГИКА ОТПРАВКИ ФОРМЫ ---
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
     setFormError(null);
 
-    if (!formData.topic_id.trim() || !formData.name.trim() || !formData.experience_points.trim() || !formData.order.trim()) {
-      setFormError('ID Темы, Название, Очки опыта и Порядок обязательны.');
-      setIsSubmitting(false); return;
+    // Валидация
+    if (!formData.name.trim()) {
+      setFormError('Название подтемы не может быть пустым.');
+      setIsSubmitting(false);
+      return;
     }
-    const topicIdNum = parseInt(formData.topic_id, 10);
-    const experiencePointsNum = parseInt(formData.experience_points, 10);
-    const orderNum = parseInt(formData.order, 10);
-
-    if (isNaN(topicIdNum) || topicIdNum <= 0) {
-      setFormError('ID Темы должен быть положительным числом.'); setIsSubmitting(false); return;
+    if (!formData.topic_id) {
+      setFormError('Необходимо выбрать родительскую тему.');
+      setIsSubmitting(false);
+      return;
     }
-    if (isNaN(experiencePointsNum) || experiencePointsNum < 0) {
-      setFormError('Очки опыта должны быть неотрицательным числом.'); setIsSubmitting(false); return;
-    }
-    if (isNaN(orderNum) || orderNum < 0) {
-      setFormError('Порядок должен быть неотрицательным числом.'); setIsSubmitting(false); return;
-    }
-
-    const payloadData: LearningSubtopicCreatePayload = {
-      name: formData.name.trim(),
-      description: formData.description.trim() || null,
-      experience_points: experiencePointsNum,
-      order: orderNum,
-    };
 
     try {
       let result: LearningSubtopic;
-      const isEditing = !!learningSubtopicToEdit;
+      const topicIdAsNumber = parseInt(formData.topic_id, 10);
 
-      if (isEditing && learningSubtopicToEdit) {
-        const updatePayload: LearningSubtopicUpdatePayload = {};
-        let hasChanges = false;
-        if (formData.name.trim() !== learningSubtopicToEdit.name) { updatePayload.name = formData.name.trim(); hasChanges = true; }
-        if (formData.description.trim() !== (learningSubtopicToEdit.description || "")) { updatePayload.description = formData.description.trim() || null; hasChanges = true; }
-        if (experiencePointsNum !== learningSubtopicToEdit.experience_points) { updatePayload.experience_points = experiencePointsNum; hasChanges = true; }
-        if (orderNum !== learningSubtopicToEdit.order) { updatePayload.order = orderNum; hasChanges = true; }
-        if (formData.image_file) { hasChanges = true; }
-
-        if (!hasChanges) {
-          setIsSubmitting(false); onSuccess?.(learningSubtopicToEdit); return;
-        }
-        result = await LearningSubtopicsApi.updateLearningSubtopic(learningSubtopicToEdit.id, updatePayload, formData.image_file);
+      if (subtopicToEdit) {
+        // --- Обновление существующей подтемы ---
+        const payload: LearningSubtopicUpdatePayload = {
+          name: formData.name,
+          description: formData.description || null,
+          experience_points: parseInt(formData.experience_points, 10),
+          order: parseInt(formData.order, 10),
+          // Отправляем topic_id, только если он изменился (позволяет перемещать подтему)
+          topic_id: topicIdAsNumber !== subtopicToEdit.topic_id ? topicIdAsNumber : undefined,
+        };
+        result = await LearningSubtopicsApi.updateSubtopic(
+          subtopicToEdit.id,
+          payload,
+          formData.image_file,
+          formData.remove_image
+        );
       } else {
-        result = await LearningSubtopicsApi.createLearningSubtopic(topicIdNum, payloadData, formData.image_file);
+        // --- Создание новой подтемы ---
+        const payload: LearningSubtopicCreatePayload = {
+          name: formData.name,
+          description: formData.description || null,
+          experience_points: parseInt(formData.experience_points, 10),
+          order: parseInt(formData.order, 10),
+          image_url: null,
+        };
+        // ID родительской темы передается в URL, а не в payload
+        result = await LearningSubtopicsApi.createSubtopic(topicIdAsNumber, payload, formData.image_file);
       }
-      onSuccess?.(result);
-    } catch (error: any) {
-      const message = error.response?.data?.detail || `Не удалось ${learningSubtopicToEdit ? 'обновить' : 'создать'} подтему.`;
-      let errorMessage = "Произошла неизвестная ошибка.";
-      if (typeof message === 'string') { errorMessage = message; }
-      else if (Array.isArray(message)) { errorMessage = message.map(err => `${err.loc?.join(' -> ') || 'поле'} - ${err.msg}`).join('; '); }
+      
+      onSuccess(result);
+
+    } catch (err: any) {
+      const detail = err.response?.data?.detail;
+      const errorMessage = typeof detail === 'object' 
+        ? JSON.stringify(detail, null, 2) 
+        : detail || 'Произошла неизвестная ошибка при сохранении подтемы.';
       setFormError(errorMessage);
     } finally {
       setIsSubmitting(false);
     }
   };
-  return { formData, setFormData, handleChange, handleFileChange, handleSubmit, isSubmitting, formError, resetForm };
+  
+  return {
+    formData,
+    isSubmitting,
+    formError,
+    handleChange,
+    handleImageFileChange,
+    handleRemoveImage,
+    handleSubmit,
+  };
 };

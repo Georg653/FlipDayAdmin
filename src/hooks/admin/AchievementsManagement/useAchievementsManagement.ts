@@ -1,130 +1,112 @@
 // src/hooks/admin/AchievementsManagement/useAchievementsManagement.ts
 import { useState, useEffect, useCallback } from 'react';
-import type {
-  Achievement,
-  AchievementFilterParams,
-  PaginatedAchievementsResponse,
-} from '../../../types/admin/Achievements/achievement.types';
+import type { Achievement } from '../../../types/admin/Achievements/achievement.types';
 import { AchievementsApi } from '../../../services/admin/Achievements/achievementsApi';
 import { ITEMS_PER_PAGE_ACHIEVEMENTS } from '../../../constants/admin/Achievements/achievements.constants';
 
 export const useAchievementsManagement = () => {
-  const [achievements, setAchievements] = useState<Achievement[]>([]); // Инициализация пустым массивом
-  const [loading, setLoading] = useState(false);
+  const [achievements, setAchievements] = useState<Achievement[]>([]);
+  const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
-  const [totalItems, setTotalItems] = useState(0);
-  const [itemsPerPage, setItemsPerPage] = useState(ITEMS_PER_PAGE_ACHIEVEMENTS);
+  const [hasNextPage, setHasNextPage] = useState(false);
+
   const [showForm, setShowForm] = useState(false);
   const [achievementToEdit, setAchievementToEdit] = useState<Achievement | null>(null);
 
-  const fetchAchievements = useCallback(async () => {
+  const itemsPerPage = ITEMS_PER_PAGE_ACHIEVEMENTS;
+
+  const fetchAchievements = useCallback(async (page: number) => {
     setLoading(true);
     setError(null);
     try {
-      const params: AchievementFilterParams = {
-        offset: (currentPage - 1) * itemsPerPage,
+      const data = await AchievementsApi.getAchievements({
+        offset: (page - 1) * itemsPerPage,
         limit: itemsPerPage,
-      };
-      const response: PaginatedAchievementsResponse = await AchievementsApi.getAchievements(params);
+      });
+
+      // ----- ГЛАВНОЕ ИЗМЕНЕНИЕ - "ЗАЩИТА ОТ ДУРАКА" -----
+      // Мы гарантируем, что achievements всегда будет массивом.
+      const achievementsData = Array.isArray(data) ? data : [];
       
-      // Гарантируем, что response.items является массивом, иначе используем пустой массив
-      setAchievements(response && Array.isArray(response.items) ? response.items : []);
-      // Гарантируем, что response.total является числом, иначе 0
-      setTotalItems(response && typeof response.total === 'number' ? response.total : 0);
+      setAchievements(achievementsData);
+      
+      // Логика пагинации теперь тоже безопасна
+      setHasNextPage(achievementsData.length === itemsPerPage);
 
     } catch (err: any) {
-      const message = err.response?.data?.detail || 'Failed to load achievements.';
+      const message = err.response?.data?.detail || 'Ошибка загрузки достижений.';
       setError(message);
-      console.error('[useAchievementsManagement] Error fetching achievements:', message, err);
-      setAchievements([]); // При ошибке устанавливаем пустой массив
-      setTotalItems(0);     // При ошибке сбрасываем totalItems
+      console.error('[useAchievementsManagement] Fetch error:', err);
+      // При любой ошибке мы тоже гарантируем пустой массив.
+      setAchievements([]); 
+      setHasNextPage(false);
     } finally {
       setLoading(false);
     }
-  }, [currentPage, itemsPerPage]);
+  }, [itemsPerPage]);
 
   useEffect(() => {
-    fetchAchievements();
-  }, [fetchAchievements]);
-
-  const handleEdit = useCallback((achievement: Achievement) => {
+    fetchAchievements(currentPage);
+  }, [currentPage, fetchAchievements]);
+  
+  const handleEdit = (achievement: Achievement) => {
     setAchievementToEdit(achievement);
     setShowForm(true);
-  }, []);
+  };
 
-  const handleShowAddForm = useCallback(() => {
+  const handleShowAddForm = () => {
     setAchievementToEdit(null);
     setShowForm(true);
-  }, []);
+  };
 
   const handleDelete = async (id: number) => {
-    // eslint-disable-next-line no-restricted-globals
-    if (!confirm('Are you sure you want to delete this achievement?')) {
-      return;
-    }
-    // setLoading(true); // Можно убрать глобальный лоадинг или сделать его более гранулярным
-    setError(null);
+    if (!window.confirm('Точно удалить это достижение?')) return;
     try {
       await AchievementsApi.deleteAchievement(id);
-      console.log('Achievement deleted successfully!');
-      if (achievements.length === 1 && currentPage > 1) {
-        setCurrentPage(prevPage => prevPage - 1);
-      } else {
-        fetchAchievements();
-      }
+      fetchAchievements(currentPage);
     } catch (err: any) {
-      const message = err.response?.data?.detail || 'Failed to delete achievement.';
-      console.error('[useAchievementsManagement] Error deleting achievement:', message, err);
+      const message = err.response?.data?.detail || 'Ошибка удаления.';
       setError(message);
-    } finally {
-      // setLoading(false);
     }
   };
 
-  const handleFormSuccess = useCallback(() => {
+  const handleFormSuccess = () => {
     setShowForm(false);
     setAchievementToEdit(null);
-    fetchAchievements();
-  }, [fetchAchievements]);
-
-  const handleCancelForm = useCallback(() => {
-    setShowForm(false);
-    setAchievementToEdit(null);
-  }, []);
-
-  const handlePreviousPage = useCallback(() => {
-    if (currentPage > 1) {
-      setCurrentPage(prevPage => prevPage - 1);
+    if (currentPage !== 1) {
+      setCurrentPage(1);
+    } else {
+      fetchAchievements(1);
     }
-  }, [currentPage]);
+  };
 
-  const handleNextPage = useCallback(() => {
-    const totalPages = Math.ceil(totalItems / itemsPerPage);
-    if (currentPage < totalPages && totalPages > 0) { // Добавил totalPages > 0
-      setCurrentPage(prevPage => prevPage + 1);
-    }
-  }, [currentPage, totalItems, itemsPerPage]);
+  const handlePreviousPage = () => {
+    if (currentPage > 1) setCurrentPage(p => p - 1);
+  };
 
+  const handleNextPage = () => {
+    if (hasNextPage) setCurrentPage(p => p + 1);
+  };
+
+  // Этот блок не изменился, он просто возвращает все наши функции и данные
   return {
     achievements,
     loading,
     error,
     currentPage,
-    setCurrentPage,
-    totalItems,
-    itemsPerPage,
-    setItemsPerPage,
     handlePreviousPage,
     handleNextPage,
+    canGoNext: hasNextPage,
+    canGoPrevious: currentPage > 1,
+    itemsPerPage: itemsPerPage,
+    totalItems: -1, // Это все еще для пагинации
     handleEdit,
     handleShowAddForm,
     handleDelete,
     handleFormSuccess,
-    handleCancelForm,
     showForm,
     setShowForm,
     achievementToEdit,
-    setAchievementToEdit,
   };
 };
