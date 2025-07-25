@@ -1,11 +1,14 @@
 // --- Путь: src/components/admin/NewsManagement/NewsManagement.tsx ---
+// ПОЛНАЯ ВЕРСИЯ
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNewsManagement } from '../../../hooks/admin/News/useNewsManagement';
 import { NewsHeader } from './NewsHeader';
 import { NewsTable } from './NewsTable';
 import { NewsForm } from './NewsForm';
 import { Modal } from '../../ui/Modal/Modal';
+import { ContentPreview } from '../../previews/ContentPreview/ContentPreview';
+import '../../../styles/admin/ui/Layouts.css';
 import '../../../styles/admin/ui/PageLayout.css';
 import type { News } from '../../../types/admin/News/news.types';
 
@@ -13,49 +16,77 @@ export const NewsManagement: React.FC = () => {
   const {
     newsItems, loading, error, handleEdit, handleDelete, handleShowAddForm,
     handleFormSuccess, showForm, setShowForm, newsToEdit,
-    // Пагинация
     currentPage, canGoNext, canGoPrevious, handleNextPage, handlePreviousPage,
-    // Фильтр
     titleFilter, handleFilterChange,
   } = useNewsManagement();
 
-  return (
-    <div className="page-container">
-      <NewsHeader
-        isLoading={loading}
-        onShowForm={handleShowAddForm}
-        filterValue={titleFilter}
-        onFilterChange={handleFilterChange}
-      />
+  const [itemToPreview, setItemToPreview] = useState<News | null>(null);
 
+  const handlePreview = (item: News) => {
+    setItemToPreview(prev => (prev?.id === item.id ? null : item));
+  };
+  
+  const layoutClasses = `page-container ${itemToPreview ? "main-with-aside-layout" : ""}`;
+
+  return (
+    <div className={layoutClasses}>
+      {/* Левая колонка - основной контент */}
+      <div className="main-content-column">
+        <NewsHeader
+          isLoading={loading}
+          onShowForm={handleShowAddForm}
+          filterValue={titleFilter}
+          onFilterChange={handleFilterChange}
+        />
+        <NewsTable
+          newsItems={newsItems}
+          isLoading={loading}
+          error={error}
+          onEdit={handleEdit}
+          onDelete={handleDelete}
+          onPreview={handlePreview}
+          activePreviewId={itemToPreview?.id}
+          currentPage={currentPage}
+          canGoNext={canGoNext}
+          canGoPrevious={canGoPrevious}
+          handleNextPage={handleNextPage}
+          handlePreviousPage={handlePreviousPage}
+        />
+      </div>
+
+      {/* Правая колонка - предпросмотр */}
+      {itemToPreview && (
+        <aside className="aside-content-column">
+          <div className="preview-sticky-container">
+            <ContentPreview 
+              data={{
+                  title: itemToPreview.title,
+                  description: itemToPreview.description,
+                  mainImage: itemToPreview.preview,
+                  backgroundImage: itemToPreview.background,
+                  content: itemToPreview.content,
+              }} 
+            />
+          </div>
+        </aside>
+      )}
+
+      {/* Модалка для формы */}
       <Modal
         isOpen={showForm}
         onClose={() => setShowForm(false)}
         title={newsToEdit ? 'Редактировать новость' : 'Создать новую новость'}
-        size="xl" // Используем самый большой размер модалки для конструктора
+        size="fullscreen"
       >
         <NewsForm
           newsToEdit={newsToEdit}
-          onSuccess={(newsItem: News) => {
+          onSuccess={(newsItem) => {
             handleFormSuccess(newsItem);
             setShowForm(false);
           }}
           onCancel={() => setShowForm(false)}
         />
       </Modal>
-
-      <NewsTable
-        newsItems={newsItems}
-        isLoading={loading}
-        error={error}
-        onEdit={handleEdit}
-        onDelete={handleDelete}
-        currentPage={currentPage}
-        canGoNext={canGoNext}
-        canGoPrevious={canGoPrevious}
-        handleNextPage={handleNextPage}
-        handlePreviousPage={handlePreviousPage}
-      />
     </div>
   );
 };

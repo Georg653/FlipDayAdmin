@@ -1,9 +1,9 @@
 // --- Путь: src/types/admin/Routes/route_props.types.ts ---
+// ПОЛНАЯ ВЕРСИЯ
 
 import type { Route } from './route.types';
-import type { Point } from '../Points/point.types';
+import type { PointBase } from '../Points/point.types';
 import type { RouteCategory } from '../RouteCategories/routeCategory.types';
-
 
 // --- Пропсы для основных компонентов страницы ---
 
@@ -42,7 +42,8 @@ export interface RouteFormProps {
 // --- Пропсы для конструктора точек ---
 
 export interface RoutePointsManagerProps {
-    allPoints: Point[];       // Все доступные точки
-    selectedPoints: Point[];  // Точки, уже добавленные в маршрут
-    onPointsChange: (newPoints: Point[]) => void; // Колбэк при изменении
+    allPoints: PointBase[];       // Все доступные точки
+    selectedPoints: PointBase[];  // Точки, уже добавленные в маршрут
+    onPointsChange: (newPoints: PointBase[]) => void; // Колбэк при изменении
+    disabled: boolean;
 }

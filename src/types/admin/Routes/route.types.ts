@@ -1,10 +1,9 @@
 // --- Путь: src/types/admin/Routes/route.types.ts ---
+// ПОЛНАЯ ВЕРСИЯ
 
-// Нам понадобится базовый тип Точки, чтобы отображать их в конструкторе
-// Убедись, что этот путь правильный
-import type { Point } from '../Points/point.types';
+import type { PointBase } from '../Points/point.types';
 
-// --- Тип, как данные приходят с бэка ---
+// Тип Маршрута, как он приходит с бэкенда
 export interface Route {
   id: number;
   route_category_id: number;
@@ -15,11 +14,11 @@ export interface Route {
   distance: number;
   estimated_time: number;
   budget: number;
-  points: number[]; // Бэкенд возвращает массив ID точек
+  points: PointBase[]; // Ожидаем массив ПОЛНЫХ объектов точек
 }
 
 // =============================================================================
-// ТИПЫ ДЛЯ ФОРМЫ (то, с чем мы работаем на фронте)
+// ТИПЫ ДЛЯ ФОРМЫ
 // =============================================================================
 
 export interface RouteFormData {
@@ -34,15 +33,15 @@ export interface RouteFormData {
   image_preview_url: string | null;
   remove_image: boolean;
   
-  // В форме мы будем хранить не просто ID, а полные объекты точек
-  // для удобного отображения и управления
-  points: Point[]; 
+  // В форме мы храним полные объекты точек для конструктора
+  points: PointBase[]; 
 }
 
 // =============================================================================
-// ТИПЫ ДЛЯ PAYLOAD (то, что мы отправляем на бэк)
+// ТИПЫ ДЛЯ PAYLOAD
 // =============================================================================
 
+// Объект, который мы сериализуем в JSON для отправки на бэк
 export interface RouteCreateUpdatePayload {
   name: string;
   description: string;
@@ -51,7 +50,7 @@ export interface RouteCreateUpdatePayload {
   estimated_time: number;
   budget: number;
   image_url?: string | null;
-  // На бэк мы отправляем только массив ID
+  // На бэк мы отправляем ТОЛЬКО массив ID точек
   points: number[];
 }
 
@@ -60,6 +59,7 @@ export interface RouteCreateUpdatePayload {
 // ВСПОМОГАТЕЛЬНЫЕ ТИПЫ
 // =============================================================================
 
+// Параметры для фильтрации в API
 export interface RouteFilterParams {
   limit?: number;
   offset?: number;

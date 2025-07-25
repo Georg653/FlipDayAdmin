@@ -1,25 +1,33 @@
 // --- Путь: src/types/admin/Points/point_props.types.ts ---
+// ПОЛНАЯ ВЕРСИЯ
 
-import type { Point } from './point.types';
+import type { PointBase, Point } from './point.types';
 
-// Пропсы для основных компонентов страницы
 export interface PointsTableProps {
-  points: Point[];
+  points: PointBase[];
   isLoading: boolean;
   error: string | null;
-  onEdit: (point: Point) => void;
+  onEdit: (point: PointBase) => void;
   onDelete: (id: number) => void;
-  // Сюда можно будет добавить пагинацию, если она появится на бэке
+  onPreview: (point: PointBase) => void;
+  activePreviewId?: number | null;
+  
+  // Пагинация
+  currentPage: number;
+  canGoNext: boolean;
+  canGoPrevious: boolean;
+  handleNextPage: () => void;
+  handlePreviousPage: () => void;
 }
 
 export interface PointsHeaderProps {
   isLoading: boolean;
   onShowForm: () => void;
-  // Сюда можно будет добавить фильтры
 }
 
 export interface PointFormProps {
-  pointToEdit: Point | null;
-  onSuccess: () => void;
+  pointToEdit: Point | null; // Форма работает с полным объектом
+  onSuccess: (updatedPoint: PointBase) => void;
   onCancel: () => void;
+  isFetchingContent: boolean;
 }

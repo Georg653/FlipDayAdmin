@@ -1,11 +1,11 @@
-// src/pages/admin/RoutesPage/RoutesPage.tsx
+// --- Путь: src/pages/admin/RoutesPage/RoutesPage.tsx ---
+// ПОЛНАЯ ВЕРСИЯ
+
 import React from 'react';
-import { RoutesManagement } from '../../../components/admin/RoutesManagement/RoutesManagement'; // Импортируем главный управляющий компонент
-// import styles from './RoutesPage.module.css'; // Если нужны специфичные стили
+import { RoutesManagement } from '../../../components/admin/RoutesManagement/RoutesManagement';
 
 const RoutesPage: React.FC = () => {
   return (
-    // <div className={styles.pageContainer}> // Если используешь CSS Modules
     <div>
       <RoutesManagement />
     </div>

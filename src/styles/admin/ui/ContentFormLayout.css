@@ -1,0 +1,60 @@
+/* --- Путь: src/styles/admin/ui/ContentFormLayout.css --- */
+/* Общие стили для всех форм с конструктором контента */
+
+/* Грид для двух колонок: настроек и конструктора */
+.content-form-grid {
+  display: grid;
+  grid-template-columns: 350px 1fr; /* 1. Настройки | 2. Конструктор */
+  gap: 2rem;
+  flex-grow: 1; /* Растягивается на всю доступную высоту */
+  overflow: hidden; /* Важно для дочерних скроллов */
+}
+
+/* Колонка с основными настройками */
+.form-column-meta {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+  overflow-y: auto;
+  height: 100%;
+  padding: 1rem;
+  border-right: 1px solid #e5e7eb;
+}
+
+/* Колонка с конструктором контента */
+.form-column-content {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  height: 100%;
+  overflow: hidden;
+  padding: 1rem;
+}
+
+/* Список блоков внутри конструктора */
+.content-blocks-list {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  padding: 0.75rem;
+  border: 1px solid #e2e8f0;
+  border-radius: 8px;
+  background-color: #f8fafc;
+  flex-grow: 1;
+  overflow-y: auto;
+}
+
+/* Стилизация скроллбаров */
+.form-column-meta::-webkit-scrollbar,
+.content-blocks-list::-webkit-scrollbar {
+  width: 8px;
+}
+.form-column-meta::-webkit-scrollbar-thumb,
+.content-blocks-list::-webkit-scrollbar-thumb {
+  background-color: #d1d5db;
+  border-radius: 4px;
+}
+.form-column-meta::-webkit-scrollbar-track,
+.content-blocks-list::-webkit-scrollbar-track {
+  background-color: transparent;
+}

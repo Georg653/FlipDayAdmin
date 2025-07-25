@@ -1,13 +1,30 @@
 // --- Путь: src/components/admin/StoriesManagement/StoriesTable.tsx ---
+// ПОЛНАЯ ВЕРСИЯ
 
 import React from 'react';
 import type { Story } from '../../../types/admin/Stories/story.types';
-import type { StoriesTableProps } from '../../../types/admin/Stories/story_props.types';
 import { Button } from '../../ui/Button/Button';
 import { Pagination } from '../../ui/Pagination/Pagination';
 import { createImageUrl } from '../../../utils/media';
 import { Checkbox } from '../../ui/Checkbox/Checkbox';
 import '../../../styles/admin/ui/Table.css';
+
+// Обновленный интерфейс пропсов
+interface StoriesTableProps {
+  stories: Story[];
+  isLoading: boolean;
+  error: string | null;
+  onEdit: (story: Story) => void;
+  onDelete: (id: number) => void;
+  onToggleStatus: (story: Story) => void;
+  onPreview: (story: Story) => void;
+  activePreviewId?: number | null;
+  currentPage: number;
+  handlePreviousPage: () => void;
+  handleNextPage: () => void;
+  canGoNext: boolean;
+  canGoPrevious: boolean;
+}
 
 export const StoriesTable: React.FC<StoriesTableProps> = ({
   stories,
@@ -16,33 +33,24 @@ export const StoriesTable: React.FC<StoriesTableProps> = ({
   onEdit,
   onDelete,
   onToggleStatus,
+  onPreview,
+  activePreviewId,
   currentPage,
   handlePreviousPage,
   handleNextPage,
   canGoNext,
   canGoPrevious,
 }) => {
-  
-  // Более надежная функция форматирования даты
   const formatDate = (dateString?: string | null): string => {
     if (!dateString) return '—';
     try {
-      // Бэк отдает дату без 'Z', поэтому new Date может парсить ее как локальную.
-      // Чтобы быть уверенными, что это UTC, и корректно отобразить в локальном времени,
-      // добавляем 'Z' вручную.
       const date = new Date(dateString.includes('Z') ? dateString : dateString + 'Z');
-      
-      // Проверяем, валидна ли дата после парсинга
       if (isNaN(date.getTime())) {
         return 'Неверная дата';
       }
-
       return date.toLocaleDateString('ru-RU', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
+        day: '2-digit', month: '2-digit', year: 'numeric',
+        hour: '2-digit', minute: '2-digit',
       });
     } catch (e) {
       return 'Ошибка даты';
@@ -52,12 +60,9 @@ export const StoriesTable: React.FC<StoriesTableProps> = ({
   if (isLoading) {
     return <div className="table-status-message">Загрузка историй...</div>;
   }
-
   if (error) {
     return <div className="table-status-message table-status-error">Ошибка: {error}</div>;
   }
-
-  // Обновленное сообщение для пустого списка
   if (!stories.length && !isLoading) {
     return <div className="table-status-message">Истории не найдены. Попробуйте изменить фильтры или создайте новую.</div>;
   }
@@ -82,8 +87,14 @@ export const StoriesTable: React.FC<StoriesTableProps> = ({
           <tbody>
             {stories.map((story) => {
               const imageUrl = createImageUrl(story.preview);
+              const isActiveForPreview = activePreviewId === story.id;
               return (
-                <tr key={story.id} className="table-body-row">
+                <tr
+                  key={story.id}
+                  className={`table-body-row ${isActiveForPreview ? 'is-active-for-preview' : ''}`}
+                  onClick={() => onPreview(story)}
+                  data-has-preview="true"
+                >
                   <td className="table-body-cell">{story.id}</td>
                   <td className="table-body-cell">
                     {imageUrl ? (
@@ -111,8 +122,8 @@ export const StoriesTable: React.FC<StoriesTableProps> = ({
                   <td className="table-body-cell">{formatDate(story.expires_at)}</td>
                   <td className="table-body-cell">
                     <div className="table-actions-container">
-                      <Button variant="link" size="sm" onClick={() => onEdit(story)}>Ред.</Button>
-                      <Button variant="link" size="sm" className="table-action-button-delete" onClick={() => onDelete(story.id)}>Удал.</Button>
+                      <Button variant="link" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(story); }}>Ред.</Button>
+                      <Button variant="link" size="sm" className="table-action-button-delete" onClick={(e) => { e.stopPropagation(); onDelete(story.id); }}>Удал.</Button>
                     </div>
                   </td>
                 </tr>

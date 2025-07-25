@@ -1,4 +1,5 @@
 // --- Путь: src/components/admin/RoutesManagement/RoutesTable.tsx ---
+// ПОЛНАЯ ВЕРСИЯ
 
 import React from 'react';
 import type { RoutesTableProps } from '../../../types/admin/Routes/route_props.types';
@@ -23,11 +24,9 @@ export const RoutesTable: React.FC<RoutesTableProps> = ({
   if (isLoading) {
     return <div className="table-status-message">Загрузка маршрутов...</div>;
   }
-
   if (error) {
     return <div className="table-status-message table-status-error">Ошибка: {error}</div>;
   }
-
   if (!routes.length) {
     return <div className="table-status-message">Маршруты не найдены. Попробуйте изменить фильтры или создайте новый.</div>;
   }
@@ -42,7 +41,7 @@ export const RoutesTable: React.FC<RoutesTableProps> = ({
               <th className="table-header-cell">Изображение</th>
               <th className="table-header-cell">Название</th>
               <th className="table-header-cell">Категория ID</th>
-              <th className="table-header-cell">Точек</th>
+              <th className="table-header-cell" style={{textAlign: 'center'}}>Точек</th>
               <th className="table-header-cell">Дистанция (м)</th>
               <th className="table-header-cell table-header-cell-actions">Действия</th>
             </tr>
@@ -61,8 +60,8 @@ export const RoutesTable: React.FC<RoutesTableProps> = ({
                     )}
                   </td>
                   <td className="table-body-cell">{route.name}</td>
-                  <td className="table-body-cell">{route.route_category_id}</td>
-                  <td className="table-body-cell">{route.points.length}</td>
+                  <td className="table-body-cell" style={{textAlign: 'center'}}>{route.route_category_id}</td>
+                  <td className="table-body-cell" style={{textAlign: 'center'}}>{route.points.length}</td>
                   <td className="table-body-cell">{route.distance}</td>
                   <td className="table-body-cell">
                     <div className="table-actions-container">

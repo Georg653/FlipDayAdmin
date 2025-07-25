@@ -1,62 +1,53 @@
-// src/components/admin/ProposalsManagement/ProposalsManagement.tsx
+// --- Путь: src/components/admin/ProposalsManagement/ProposalsManagement.tsx ---
+
 import React from 'react';
+import { useProposalsManagement } from '../../../hooks/admin/ProposalsManagement/useProposalsManagement';
 import { ProposalsHeader } from './ProposalsHeader';
 import { ProposalsTable } from './ProposalsTable';
-import { ProposalStatusUpdateModal } from './ProposalStatusUpdateModal'; // Наша модалка/форма
-import { useProposalsManagement } from '../../../hooks/admin/ProposalsManagement/useProposalsManagement';
-import { ITEMS_PER_PAGE_PROPOSALS } from '../../../constants/admin/Proposals/proposals.constants';
+import { ProposalStatusUpdateModal } from './ProposalStatusUpdateModal';
+import { Modal } from '../../ui/Modal/Modal';
 import '../../../styles/admin/ui/PageLayout.css';
 
 export const ProposalsManagement: React.FC = () => {
   const {
-    proposals,
-    loading,
-    error,
-    currentPage,
-    itemsPerPage, // Получаем из хука, хотя он и константа
-    canLoadMore,
-    handlePreviousPage,
-    handleNextPage,
-    filterStatus,
-    handleStatusFilterChange,
-    
-    isStatusModalOpen,
-    proposalToUpdateStatus,
-    isUpdatingStatus, // Для кнопки Submit в модалке
-    statusUpdateError,  // Для отображения ошибки в модалке
-    openStatusUpdateModal,
-    closeStatusUpdateModal,
-    handleUpdateStatus, // Функция, которую вызовет модалка при сабмите
+    proposals, loading, error,
+    currentPage, canGoNext, canGoPrevious, handlePreviousPage, handleNextPage,
+    statusFilter, handleFilterChange,
+    proposalToUpdate, isUpdating, onOpenStatusModal, onCloseStatusModal, handleUpdateStatus,
   } = useProposalsManagement();
 
   return (
     <div className="page-container">
       <ProposalsHeader
-        isLoading={loading} // Блокируем фильтр во время общей загрузки списка
-        filterStatus={filterStatus}
-        onStatusFilterChange={handleStatusFilterChange}
+        isLoading={loading}
+        activeFilter={statusFilter}
+        onFilterChange={handleFilterChange}
       />
 
-      {/* Модальное окно/форма для обновления статуса */}
-      <ProposalStatusUpdateModal
-        isOpen={isStatusModalOpen}
-        onClose={closeStatusUpdateModal}
-        proposal={proposalToUpdateStatus}
-        onSubmit={handleUpdateStatus} // Передаем функцию из хука
-        isSubmitting={isUpdatingStatus} // Передаем флаг загрузки для этой конкретной операции
-        formError={statusUpdateError}  // Передаем ошибку для этой конкретной операции
-      />
+      <Modal
+        isOpen={!!proposalToUpdate}
+        onClose={onCloseStatusModal}
+        title="Обновить статус предложения"
+        size="md"
+      >
+        <ProposalStatusUpdateModal
+          proposal={proposalToUpdate}
+          isUpdating={isUpdating}
+          onUpdate={handleUpdateStatus}
+          onClose={onCloseStatusModal}
+        />
+      </Modal>
 
       <ProposalsTable
         proposals={proposals}
         isLoading={loading}
         error={error}
-        onUpdateStatusClick={openStatusUpdateModal} // При клике открываем модалку
+        onOpenStatusModal={onOpenStatusModal}
         currentPage={currentPage}
-        itemsPerPage={itemsPerPage}
-        handlePreviousPage={handlePreviousPage}
+        canGoNext={canGoNext}
+        canGoPrevious={canGoPrevious}
         handleNextPage={handleNextPage}
-        canLoadMore={canLoadMore}
+        handlePreviousPage={handlePreviousPage}
       />
     </div>
   );

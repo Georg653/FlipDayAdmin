@@ -1,56 +1,59 @@
-// src/services/admin/Proposals/proposalsApi.ts
+// --- Путь: src/services/admin/Proposals/proposalsApi.ts ---
+// ПОЛНАЯ ВЕРСИЯ
 
 import axiosInstance from '../api/axios';
 import { ENDPOINTS } from '../api/endpoints';
 import { buildQueryString } from '../api/buildQuery';
+
 import type {
   Proposal,
   ProposalFilterParams,
-  ProposalStatusUpdatePayload,
-} from '../../../types/admin/Proposals/proposal.types'; // Убедись, что импорты type корректны
+  UpdateProposalStatusPayload,
+  ProposalStatus
+} from '../../../types/admin/Proposals/proposal.types';
 
 export const ProposalsApi = {
   /**
-   * Получает список предложений с пагинацией и фильтрацией по статусу.
-   * API не возвращает total, поэтому мы просто получаем массив.
+   * Получение списка предложений с пагинацией и фильтрацией.
    */
   getProposals: async (params: ProposalFilterParams = {}): Promise<Proposal[]> => {
-    const queryParams: Record<string, any> = {
-      limit: params.limit,
-      offset: params.offset,
+    // Создаем копию параметров, чтобы не мутировать исходный объект
+    const apiParams: { limit?: number; offset?: number; status_filter?: ProposalStatus } = {
+        limit: params.limit,
+        offset: params.offset,
     };
-    // Обрабатываем status_filter: ProposalStatus | null
-    // API ожидает status_filter=pending и т.д. Если null, параметр не передаем.
-    if (params.status_filter) { // Передаем, если не null и не пустая строка
-      queryParams.status_filter = params.status_filter;
-    }
 
-    const query = buildQueryString(queryParams);
+    // Бэкенд не понимает 'all', поэтому мы отправляем `status_filter`
+    // только если он не равен 'all'.
+    if (params.status_filter && params.status_filter !== 'all') {
+      apiParams.status_filter = params.status_filter;
+    }
+    
+    const query = buildQueryString(apiParams);
     const response = await axiosInstance.get<Proposal[]>(`${ENDPOINTS.PROPOSALS}${query}`);
-    return response.data; // API возвращает просто массив Proposal[]
+    
+    // Дополнительная проверка, чтобы всегда возвращать массив
+    return Array.isArray(response.data) ? response.data : [];
   },
 
   /**
-   * Получает одно предложение по ID.
-   * proposalId - это строка (UUID).
+   * Получение одного предложения по его ID (UUID в виде строки).
    */
   getProposalById: async (proposalId: string): Promise<Proposal> => {
-    return (await axiosInstance.get<Proposal>(ENDPOINTS.PROPOSAL_DETAIL(proposalId))).data;
+    const response = await axiosInstance.get<Proposal>(ENDPOINTS.PROPOSAL_DETAIL(proposalId));
+    return response.data;
   },
 
   /**
-   * Обновляет статус предложения по ID.
-   * proposalId - это строка (UUID).
-   * payload содержит { status: NewProposalStatus }
+   * Обновление статуса предложения.
+   * Использует PATCH-запрос на специальный эндпоинт /status.
    */
   updateProposalStatus: async (
     proposalId: string,
-    payload: ProposalStatusUpdatePayload
-  ): Promise<Proposal> => { // API возвращает обновленный объект Proposal
-    return (await axiosInstance.patch<Proposal>(
-      ENDPOINTS.PROPOSAL_UPDATE_STATUS(proposalId),
-      payload // Тело запроса - это объект { status: "new_status" }
-      // Заголовки Content-Type: application/json по умолчанию для Axios, если не FormData
-    )).data;
+    payload: UpdateProposalStatusPayload
+  ): Promise<Proposal> => {
+    const url = `${ENDPOINTS.PROPOSAL_DETAIL(proposalId)}status`;
+    const response = await axiosInstance.patch<Proposal>(url, payload);
+    return response.data;
   },
 };

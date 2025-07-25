@@ -1,4 +1,5 @@
 // --- Путь: src/components/admin/PointsManagement/PointsHeader.tsx ---
+// ПОЛНАЯ ВЕРСИЯ
 
 import React from 'react';
 import { Button } from '../../ui/Button/Button';
@@ -12,7 +13,7 @@ export const PointsHeader: React.FC<PointsHeaderProps> = ({
   return (
     <div className="page-header">
       <div className="page-header-top">
-        <h2 className="page-header-title">Точки на карте</h2>
+        <h2 className="page-header-title">Управление Точками (Локациями)</h2>
         <Button onClick={onShowForm} disabled={isLoading} variant="success">
           Добавить точку
         </Button>

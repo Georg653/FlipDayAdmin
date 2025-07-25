@@ -1,4 +1,6 @@
-// --- Путь: src/hooks/admin/useDebounce.ts ---
+// --- Путь: src/hooks/admin/Routes/useDebounce.ts ---
+// ПОЛНАЯ ВЕРСИЯ
+
 import { useState, useEffect } from 'react';
 
 export const useDebounce = <T>(value: T, delay: number): T => {
@@ -9,6 +11,7 @@ export const useDebounce = <T>(value: T, delay: number): T => {
       setDebouncedValue(value);
     }, delay);
 
+    // Очищаем таймаут при каждом новом значении или при размонтировании
     return () => {
       clearTimeout(handler);
     };

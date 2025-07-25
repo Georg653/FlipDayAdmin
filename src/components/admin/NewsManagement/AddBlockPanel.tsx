@@ -1,26 +1,24 @@
 // --- Путь: src/components/admin/NewsManagement/AddBlockPanel.tsx ---
-// ИСПРАВЛЕННАЯ ВЕРСИЯ
+// ПОЛНАЯ ВЕРСИЯ
 
 import React from 'react';
-// ВАЖНО: Мы будем использовать общий тип, а не из News
 import type { ContentBlockFormData } from '../../../types/common/content.types';
 import { Button } from '../../ui/Button/Button';
 import './AddBlockPanel.css';
 
 interface AddBlockPanelProps {
-  onAddBlock: (type: ContentBlockFormData['type']) => void;
+  onAddBlock: (type: ContentBlockFormData['type'], index?: number) => void;
 }
 
-// Определяем, какие кнопки мы будем показывать
-const blockTypes: { label: string, type: ContentBlockFormData['type'] }[] = [
-    { label: 'Текст', type: 'text' },
-    { label: 'Заголовок', type: 'heading' },
-    { label: 'Изображение', type: 'image' },
-    { label: 'Видео', type: 'video' },
-    { label: 'Аудио', type: 'audio' },
-    { label: 'Альбом', type: 'album' },
-    { label: 'Слайдер', type: 'slider' },
-    { label: 'Тест', type: 'test' }, // <--- РАСКОММЕНТИРОВАНО И ДОБАВЛЕНО
+const blockTypes: { label: string; type: ContentBlockFormData['type'] }[] = [
+  { label: 'Текст', type: 'text' },
+  { label: 'Заголовок', type: 'heading' },
+  { label: 'Изображение', type: 'image' },
+  { label: 'Видео', type: 'video' },
+  { label: 'Аудио', type: 'audio' },
+  { label: 'Альбом', type: 'album' },
+  { label: 'Слайдер', type: 'slider' },
+  { label: 'Тест', type: 'test' },
 ];
 
 export const AddBlockPanel: React.FC<AddBlockPanelProps> = ({ onAddBlock }) => {

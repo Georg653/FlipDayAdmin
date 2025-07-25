@@ -1,0 +1,72 @@
+/* --- Путь: src/styles/admin/ui/Layouts.css --- */
+/* ПОЛНАЯ ВЕРСИЯ */
+
+/* 1. Макет для модального окна (форма + превью) */
+.form-with-preview-layout {
+  display: flex;
+  gap: 2rem;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+.form-with-preview-main {
+  flex: 2;
+  min-width: 0;
+  height: 100%;
+  overflow-y: auto;
+  padding-right: 1.5rem;
+}
+.form-with-preview-aside {
+  flex: 1;
+  min-width: 390px;
+  height: 100%;
+  overflow-y: hidden;
+}
+.form-with-preview-aside .preview-title {
+  display: none;
+}
+.form-with-preview-aside .preview-sticky-container {
+  /* Ничего не нужно */
+}
+
+/* 2. Макет для основной страницы (таблица + превью) */
+.main-with-aside-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 420px;
+  gap: 2rem;
+  align-items: flex-start;
+}
+.main-content-column { min-width: 0; }
+.aside-content-column { min-width: 0; }
+
+.aside-content-column .preview-sticky-container {
+  position: sticky;
+  top: 20px;
+}
+.aside-preview-header {
+  display: none; /* Скрываем шапку в боковой панели */
+}
+
+/* 3. Адаптивность для обоих макетов */
+@media (max-width: 1280px) {
+  .form-with-preview-layout,
+  .main-with-aside-layout {
+    grid-template-columns: 1fr;
+    display: flex;
+    flex-direction: column;
+  }
+  .form-with-preview-main {
+    overflow-y: visible;
+    height: auto;
+  }
+  .form-with-preview-aside,
+  .aside-content-column {
+    width: 100%;
+    margin-top: 2rem;
+    display: flex;
+    justify-content: center;
+  }
+  .preview-sticky-container {
+    position: static;
+  }
+}

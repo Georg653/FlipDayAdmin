@@ -28,7 +28,7 @@ export const ENDPOINTS = {
   // POINTS
   POINTS: `points/`,
   POINT_DETAIL: (id: number) => `points/${id}/`,
-  POINT_CONTENT: (id: number) => `points/${id}/content/`, // <--- ДОБАВЛЕНО
+POINT_CONTENT: (id: number) => `points/${id}/content`,
 
   // ROUTES
   ROUTES: `routes/`,

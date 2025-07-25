@@ -1,10 +1,11 @@
 // --- Путь: src/components/admin/RoutesManagement/RoutePointsManager.tsx ---
+// ПОЛНАЯ ВЕРСИЯ
 
 import React, { useState, useMemo } from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
 import type { DropResult } from '@hello-pangea/dnd';
 import type { RoutePointsManagerProps } from '../../../types/admin/Routes/route_props.types';
-import type { Point } from '../../../types/admin/Points/point.types';
+import type { PointBase } from '../../../types/admin/Points/point.types';
 import { Input } from '../../ui/Input/Input';
 import { Button } from '../../ui/Button/Button';
 import './RoutePointsManager.css';
@@ -13,10 +14,10 @@ export const RoutePointsManager: React.FC<RoutePointsManagerProps> = ({
   allPoints,
   selectedPoints,
   onPointsChange,
+  disabled,
 }) => {
   const [search, setSearch] = useState('');
 
-  // Фильтруем список всех точек, исключая уже выбранные
   const availablePoints = useMemo(() => {
     const selectedIds = new Set(selectedPoints.map(p => p.id));
     return allPoints
@@ -24,16 +25,18 @@ export const RoutePointsManager: React.FC<RoutePointsManagerProps> = ({
       .filter(p => p.name.toLowerCase().includes(search.toLowerCase()));
   }, [allPoints, selectedPoints, search]);
 
-  const handleAddPoint = (point: Point) => {
+  const handleAddPoint = (point: PointBase) => {
+    if (disabled) return;
     onPointsChange([...selectedPoints, point]);
   };
 
   const handleRemovePoint = (pointId: number) => {
+    if (disabled) return;
     onPointsChange(selectedPoints.filter(p => p.id !== pointId));
   };
   
   const onDragEnd = (result: DropResult) => {
-    if (!result.destination) return;
+    if (!result.destination || disabled) return;
     const items = Array.from(selectedPoints);
     const [reorderedItem] = items.splice(result.source.index, 1);
     items.splice(result.destination.index, 0, reorderedItem);
@@ -42,7 +45,7 @@ export const RoutePointsManager: React.FC<RoutePointsManagerProps> = ({
 
   return (
     <div className="points-manager">
-      {/* --- ЛЕВАЯ КОЛОНКА: ВСЕ ДОСТУПНЫЕ ТОЧКИ --- */}
+      {/* Левая колонка: все доступные точки */}
       <div className="points-column">
         <h5 className="points-column-title">Доступные точки</h5>
         <Input
@@ -51,19 +54,20 @@ export const RoutePointsManager: React.FC<RoutePointsManagerProps> = ({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           className="points-search-input"
+          disabled={disabled}
         />
         <ul className="points-list">
           {availablePoints.map(point => (
             <li key={point.id} className="point-item available">
-              <span className="point-name">{point.name}</span>
-              <Button size="sm" variant="outline" onClick={() => handleAddPoint(point)}>Добавить →</Button>
+              <span className="point-name">{point.name} (ID: {point.id})</span>
+              <Button size="sm" variant="outline" onClick={() => handleAddPoint(point)} disabled={disabled}>Добавить →</Button>
             </li>
           ))}
           {availablePoints.length === 0 && <li className="point-item-empty">Нет доступных точек</li>}
         </ul>
       </div>
 
-      {/* --- ПРАВАЯ КОЛОНКА: ВЫБРАННЫЕ ТОЧКИ (С DRAG-AND-DROP) --- */}
+      {/* Правая колонка: выбранные точки */}
       <div className="points-column">
         <h5 className="points-column-title">Точки в маршруте ({selectedPoints.length})</h5>
         <DragDropContext onDragEnd={onDragEnd}>
@@ -81,13 +85,13 @@ export const RoutePointsManager: React.FC<RoutePointsManagerProps> = ({
                       >
                         <span className="point-order">{index + 1}.</span>
                         <span className="point-name">{point.name}</span>
-                        <Button size="sm" variant="destructive" onClick={() => handleRemovePoint(point.id)}>×</Button>
+                        <Button size="sm" variant="destructive" onClick={() => handleRemovePoint(point.id)} disabled={disabled}>×</Button>
                       </li>
                     )}
                   </Draggable>
                 ))}
                 {provided.placeholder}
-                 {selectedPoints.length === 0 && <li className="point-item-empty">Перетащите или добавьте точки сюда</li>}
+                 {selectedPoints.length === 0 && <li className="point-item-empty">Перетащите или добавьте точки</li>}
               </ul>
             )}
           </Droppable>

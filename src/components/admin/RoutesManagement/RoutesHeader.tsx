@@ -1,4 +1,5 @@
 // --- Путь: src/components/admin/RoutesManagement/RoutesHeader.tsx ---
+// ПОЛНАЯ ВЕРСИЯ
 
 import React from 'react';
 import { Button } from '../../ui/Button/Button';
@@ -17,10 +18,11 @@ export const RoutesHeader: React.FC<RoutesHeaderProps> = ({
   searchFilter,
   onSearchFilterChange,
 }) => {
-  // Преобразуем загруженные категории в формат для компонента Select
   const categoryOptions: SelectOption[] = [
     { value: 'all', label: 'Все категории' },
-    ...categories.map(cat => ({ value: String(cat.id), label: cat.name })),
+    ...categories
+        .filter(cat => !cat.name.toLowerCase().includes('auto'))
+        .map(cat => ({ value: String(cat.id), label: cat.name })),
   ];
 
   return (

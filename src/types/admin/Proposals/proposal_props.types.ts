@@ -1,33 +1,30 @@
-// src/types/admin/Proposals/proposal_props.types.ts
+// --- Путь: src/types/admin/Proposals/proposal_props.types.ts ---
 
-import type { Proposal, ProposalStatus, ProposalStatusFormData } from './proposal.types';
-
-export interface ProposalsHeaderProps {
-  isLoading: boolean;
-  // Кнопки "Добавить" нет
-  filterStatus: ProposalStatus | null;
-  onStatusFilterChange: (value: string) => void; // value будет "all" или ProposalStatus
-}
+import type { Proposal, ProposalStatus } from './proposal.types';
 
 export interface ProposalsTableProps {
   proposals: Proposal[];
   isLoading: boolean;
   error: string | null;
-  // onEdit и onDelete нет, есть onUpdateStatus
-  onUpdateStatusClick: (proposal: Proposal) => void; // Открывает модалку/форму для смены статуса
-  
+  onOpenStatusModal: (proposal: Proposal) => void;
+  // Пагинация
   currentPage: number;
-  handlePreviousPage: () => void;
+  canGoNext: boolean;
+  canGoPrevious: boolean;
   handleNextPage: () => void;
-  canLoadMore?: boolean;
-  itemsPerPage: number;
+  handlePreviousPage: () => void;
 }
 
+export interface ProposalsHeaderProps {
+  isLoading: boolean;
+  activeFilter: ProposalStatus | 'all';
+  onFilterChange: (e: React.ChangeEvent<HTMLSelectElement>) => void;
+}
+
+// Пропсы для модального окна обновления статуса
 export interface ProposalStatusUpdateModalProps {
-  isOpen: boolean;
+  proposal: Proposal | null;
+  isUpdating: boolean;
+  onUpdate: (newStatus: ProposalStatus) => void;
   onClose: () => void;
-  proposal: Proposal | null; // Предложение, для которого меняем статус
-  onSubmit: (proposalId: string, newStatus: ProposalStatus) => Promise<void>; // Функция для отправки PATCH запроса
-  isSubmitting: boolean;
-  formError: string | null;
 }

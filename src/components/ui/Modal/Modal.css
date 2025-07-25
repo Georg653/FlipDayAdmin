@@ -1,75 +1,90 @@
-/* src/components/ui/Modal/Modal.css */
+/* --- Путь: src/components/ui/Modal/Modal.css --- */
+/* ФИНАЛЬНАЯ ВЕРСИЯ 3.0 */
+
 .modal-overlay {
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.6);
+  inset: 0;
+  background-color: rgba(0, 0, 0, 0.7);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000; /* Выше чем сайдбар */
+  z-index: 1000;
   padding: 1rem;
 }
 
-.modal-content {
-  background-color: white;
-  padding: 1.5rem;
-  border-radius: 0.5rem;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
-  max-height: 90vh;
-  overflow-y: auto;
+.modal-container {
   position: relative;
+  background-color: #ffffff;
+  border-radius: 0.75rem;
+  box-shadow: 0 20px 25px -5px rgba(0,0,0,0.1), 0 8px 10px -6px rgba(0,0,0,0.1);
   display: flex;
   flex-direction: column;
 }
 
+/* Стандартные размеры */
 .modal-size-sm { width: 100%; max-width: 400px; }
 .modal-size-md { width: 100%; max-width: 600px; }
 .modal-size-lg { width: 100%; max-width: 800px; }
-.modal-size-xl { width: 100%; max-width: 1000px; }
+.modal-size-xl { width: 100%; max-width: 1200px; }
 
-
-.modal-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding-bottom: 1rem;
-  border-bottom: 1px solid #e5e7eb;
-  margin-bottom: 1rem;
+/* --- ГЛАВНЫЕ ИЗМЕНЕНИЯ ЗДЕСЬ --- */
+.modal-size-fullscreen {
+  /* Ширину подбираем так, чтобы влезла форма и телефон без лишнего места */
+  width: 90vw; 
+  max-width: 1400px; /* <--- УМЕНЬШИЛ ШИРИНУ */
+  
+  /* Высоту делаем чуть больше, чтобы телефон точно влез */
+  height: 95vh; /* <--- УВЕЛИЧИЛ ВЫСОТУ */
+  max-height: 850px; /* Ограничиваем максимальную высоту на очень высоких экранах */
 }
 
-.modal-title {
-  font-size: 1.25rem;
-  font-weight: 600;
-  color: #1f2937;
-}
+/* Скрытый заголовок */
+.modal-header-bar { display: none; }
+.modal-title { display: none; }
 
+/* Крестик для закрытия */
 .modal-close-button {
-  background: none;
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background-color: rgba(229, 231, 235, 0.8);
+  color: #4b5563;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   border: none;
   font-size: 1.75rem;
   line-height: 1;
-  color: #6b7280;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   cursor: pointer;
-  padding: 0.25rem;
+  z-index: 20;
+  transition: all 0.2s ease;
 }
 .modal-close-button:hover {
-  color: #1f2937;
+  background-color: #d1d5db;
+  color: #111827;
+  transform: rotate(90deg);
 }
 
+/* Основной контент модалки */
 .modal-body {
+  padding: 1.5rem;
   flex-grow: 1;
-  overflow-y: auto; /* Если контент в теле модалки длинный */
-  /* padding-bottom: 1rem; */ /* Если нет футера, можно добавить отступ снизу */
+  overflow-y: auto;
+}
+.modal-size-fullscreen .modal-body {
+  padding: 1.5rem;
+  overflow: hidden; 
 }
 
+/* Футер модалки */
 .modal-footer {
-  padding-top: 1rem;
+  padding: 1rem 1.5rem;
   border-top: 1px solid #e5e7eb;
-  margin-top: 1rem;
-  display: flex;
-  justify-content: flex-end;
-  gap: 0.75rem;
+  background-color: #f9fafb;
+  border-bottom-left-radius: 0.75rem;
+  border-bottom-right-radius: 0.75rem;
+  flex-shrink: 0;
 }

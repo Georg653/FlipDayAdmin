@@ -1,89 +1,80 @@
 /* --- Путь: src/components/admin/RoutesManagement/RoutePointsManager.css --- */
+/* ПОЛНАЯ ВЕРСИЯ */
 
 .points-manager {
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 1.5rem;
   border: 1px solid #e2e8f0;
-  padding: 1rem;
   border-radius: 8px;
+  padding: 1rem;
+  height: 100%;
+  min-height: 400px; /* Минимальная высота, чтобы не схлопывался */
   background-color: #f8fafc;
 }
 
 .points-column {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
+  height: 100%;
+  overflow: hidden; /* Важно для дочернего скролла */
 }
 
 .points-column-title {
-  margin: 0;
-  padding-bottom: 0.75rem;
-  border-bottom: 1px solid #e2e8f0;
-  font-size: 1.1rem; /* Чуть крупнее */
   font-weight: 600;
-  color: #1e293b; /* Чуть темнее */
+  margin: 0;
+  padding-bottom: 0.5rem;
+  border-bottom: 1px solid #e2e8f0;
 }
 
 .points-search-input {
   width: 100%;
-  margin-bottom: 0.5rem; /* Небольшой отступ снизу */
 }
 
 .points-list {
   list-style: none;
-  padding: 0;
   margin: 0;
+  padding: 0.25rem;
+  flex-grow: 1;
+  overflow-y: auto;
   border: 1px solid #e2e8f0;
   border-radius: 6px;
-  height: 450px; /* Увеличим высоту */
-  overflow-y: auto;
   background-color: #ffffff;
 }
 
-/* Стили для элемента списка */
 .point-item {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 0.6rem 0.75rem; /* Немного больше паддинги */
+  padding: 0.5rem 0.75rem;
   border-bottom: 1px solid #f1f5f9;
-  transition: background-color 0.2s ease-in-out; /* Плавный переход */
 }
 .point-item:last-child {
   border-bottom: none;
 }
-.point-item.available:hover {
-  background-color: #f1f5f9; /* Ховер для доступных точек */
-}
 
-/* Стили для выбранной (перетаскиваемой) точки */
 .point-item.selected {
   cursor: grab;
-  background-color: #ffffff;
-  border-left: 3px solid #3b82f6; /* Синяя полоска слева */
-  padding-left: calc(0.75rem - 3px);
+  background-color: #f9fafb;
 }
 .point-item.selected:hover {
-    background-color: #eff6ff; /* Голубой ховер */
+  background-color: #f3f4f6;
 }
 
 .point-name {
-  flex-grow: 1;
-  padding: 0 0.75rem;
-  color: #334155;
-  font-size: 0.95rem;
+  font-size: 0.875rem;
 }
 
 .point-order {
   font-weight: 600;
-  color: #64748b;
-  min-width: 25px; /* Чтобы точки не прыгали при > 9 */
+  color: #6b7280;
+  margin-right: 0.5rem;
 }
 
 .point-item-empty {
-    padding: 2rem;
-    text-align: center;
-    color: #94a3b8;
-    font-style: italic;
+  text-align: center;
+  color: #9ca3af;
+  font-style: italic;
+  padding: 1.5rem;
 }

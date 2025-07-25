@@ -1,4 +1,5 @@
 // --- Путь: src/hooks/admin/Routes/useRouteForm.ts ---
+// ПОЛНАЯ ВЕРСИЯ
 
 import { useState, useEffect } from 'react';
 import type { 
@@ -6,12 +7,13 @@ import type {
   RouteFormData, 
   RouteCreateUpdatePayload 
 } from '../../../types/admin/Routes/route.types';
-import type { Point } from '../../../types/admin/Points/point.types';
+import type { PointBase } from '../../../types/admin/Points/point.types';
 import type { RouteCategory } from '../../../types/admin/RouteCategories/routeCategory.types';
 
 import { RoutesApi } from '../../../services/admin/Routes/routesApi';
 import { PointsApi } from '../../../services/admin/Points/pointsApi';
 import { RouteCategoriesApi } from '../../../services/admin/RouteCategories/routeCategoriesApi';
+import { createImageUrl } from '../../../utils/media';
 
 const initialFormData: RouteFormData = {
   name: '',
@@ -37,19 +39,17 @@ export const useRouteForm = ({ routeToEdit, onSuccess }: UseRouteFormOptions) =>
   const [formError, setFormError] = useState<string | null>(null);
 
   const [allCategories, setAllCategories] = useState<RouteCategory[]>([]);
-  const [allPoints, setAllPoints] = useState<Point[]>([]);
+  const [allPoints, setAllPoints] = useState<PointBase[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchDataForForm = async () => {
       setIsLoading(true);
+      setFormError(null);
       try {
-        // --- ИСПРАВЛЕНИЕ: Уменьшаем limit до адекватного значения ---
-        // Если у тебя больше 200 категорий или точек, это число нужно будет увеличить
-        // или реализовать полную подгрузку всех страниц. Но для начала этого хватит.
         const [categoriesData, pointsData] = await Promise.all([
-          RouteCategoriesApi.getRouteCategories({ limit: 200 }),
-          PointsApi.getPointsList({ limit: 200 })
+          RouteCategoriesApi.getRouteCategories({ limit: 1000 }),
+          PointsApi.getPoints({ limit: 1000 })
         ]);
         setAllCategories(categoriesData);
         setAllPoints(pointsData);
@@ -62,13 +62,8 @@ export const useRouteForm = ({ routeToEdit, onSuccess }: UseRouteFormOptions) =>
     fetchDataForForm();
   }, []);
 
-
   useEffect(() => {
-    if (routeToEdit && allPoints.length > 0) {
-      const selectedPoints = routeToEdit.points
-        .map(pointId => allPoints.find(p => p.id === pointId))
-        .filter((p): p is Point => p !== undefined);
-
+    if (routeToEdit) {
       setFormData({
         name: routeToEdit.name,
         description: routeToEdit.description,
@@ -79,24 +74,25 @@ export const useRouteForm = ({ routeToEdit, onSuccess }: UseRouteFormOptions) =>
         image_file: null,
         image_preview_url: routeToEdit.image,
         remove_image: false,
-        points: selectedPoints,
+        points: routeToEdit.points,
       });
     } else {
       setFormData(initialFormData);
     }
-  }, [routeToEdit, allPoints]);
+  }, [routeToEdit]);
 
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => {
     setFormData(prev => ({ ...prev, [e.target.name]: e.target.value }));
   };
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setFormData(prev => ({ ...prev, image_file: e.target.files?.[0] || null }));
+    const file = e.target.files?.[0] || null;
+    setFormData(prev => ({ ...prev, image_file: file, image_preview_url: file ? URL.createObjectURL(file) : null, remove_image: false }));
   };
   const handleRemoveImage = (checked: boolean) => {
-    setFormData(prev => ({ ...prev, remove_image: checked }));
+    setFormData(prev => ({ ...prev, remove_image: checked, image_file: null, image_preview_url: checked ? null : createImageUrl(routeToEdit?.image) }));
   };
-  const handlePointsChange = (newPoints: Point[]) => {
+  const handlePointsChange = (newPoints: PointBase[]) => {
     setFormData(prev => ({ ...prev, points: newPoints }));
   };
 
@@ -121,7 +117,7 @@ export const useRouteForm = ({ routeToEdit, onSuccess }: UseRouteFormOptions) =>
       estimated_time: parseInt(formData.estimated_time, 10) || 0,
       budget: parseFloat(formData.budget) || 0,
       points: formData.points.map(p => p.id),
-      image_url: formData.image_file ? null : formData.image_preview_url,
+      image_url: formData.image_file || formData.remove_image ? undefined : formData.image_preview_url,
     };
 
     try {
@@ -132,23 +128,16 @@ export const useRouteForm = ({ routeToEdit, onSuccess }: UseRouteFormOptions) =>
       }
       onSuccess();
     } catch (err: any) {
-      setFormError(err.response?.data?.detail || 'Ошибка сохранения маршрута');
+      const detail = err.response?.data?.detail;
+      setFormError(typeof detail === 'object' ? JSON.stringify(detail) : detail || 'Ошибка сохранения маршрута');
     } finally {
       setIsSubmitting(false);
     }
   };
 
   return {
-    formData,
-    isSubmitting,
-    formError,
-    allCategories,
-    allPoints,
-    isLoading,
-    handleChange,
-    handleFileChange,
-    handleRemoveImage,
-    handlePointsChange,
-    handleSubmit,
+    formData, isSubmitting, formError, allCategories, allPoints,
+    isLoading, handleChange, handleFileChange, handleRemoveImage,
+    handlePointsChange, handleSubmit,
   };
 };

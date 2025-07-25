@@ -1,6 +1,7 @@
 // --- Путь: src/components/admin/StoriesManagement/StoryForm.tsx ---
+// ПОЛНАЯ ВЕРСИЯ
 
-import React from 'react';
+import React, { useMemo } from 'react'; // <--- Добавлен useMemo
 import { useStoryForm } from '../../../hooks/admin/Stories/useStoryForm';
 import type { StoryFormProps } from '../../../types/admin/Stories/story_props.types';
 import type { StoryContentItemFormData } from '../../../types/admin/Stories/story.types';
@@ -9,8 +10,11 @@ import { Input } from '../../ui/Input/Input';
 import { Checkbox } from '../../ui/Checkbox/Checkbox';
 import { ImageUpload } from '../../ui/ImageUpload/ImageUpload';
 import { Select } from '../../ui/Select/Select';
-import type { SelectOption } from '../../ui/Select/Select'; // Исправленный импорт
+import type { SelectOption } from '../../ui/Select/Select';
+import { StoryPreview } from '../../previews/StoryPreview/StoryPreview';
+
 import '../../../styles/admin/ui/Form.css';
+import '../../../styles/admin/ui/Layouts.css';
 import './StoryForm.css';
 
 const contentTypeOptions: SelectOption[] = [
@@ -18,113 +22,7 @@ const contentTypeOptions: SelectOption[] = [
   { value: 'video', label: 'Видео' },
 ];
 
-export const StoryForm: React.FC<StoryFormProps> = ({
-  storyToEdit,
-  onSuccess,
-  onCancel,
-}) => {
-  const {
-    formData,
-    isSubmitting,
-    formError,
-    handleChange,
-    handlePreviewFileChange,
-    handleRemovePreview,
-    addContentItem,
-    removeContentItem,
-    handleContentItemChange,
-    handleContentItemFileChange,
-    handleSubmit,
-  } = useStoryForm({ storyToEdit, onSuccess });
-
-  return (
-    <form onSubmit={handleSubmit} noValidate className="form-container story-form">
-      {formError && <p className="form-error">Ошибка: {formError}</p>}
-      
-      <div className="form-grid">
-        {/* --- ЛЕВАЯ КОЛОНКА: Основные настройки --- */}
-        <div className="form-column">
-          <div className="form-group">
-            <label htmlFor="name">Название истории</label>
-            <Input id="name" name="name" value={formData.name} onChange={handleChange} disabled={isSubmitting} />
-          </div>
-
-          <div className="form-group">
-            <label htmlFor="expires_at">Дата и время истечения</label>
-            <Input id="expires_at" name="expires_at" type="datetime-local" value={formData.expires_at} onChange={handleChange} disabled={isSubmitting} />
-          </div>
-
-          <div className="form-group">
-            <Checkbox
-              id="is_active"
-              name="is_active"
-              label="История активна"
-              checked={formData.is_active}
-              onChange={(checked) => handleChange({ target: { name: 'is_active', value: checked, type: 'checkbox' } } as any)}
-              disabled={isSubmitting}
-            />
-          </div>
-
-          <div className="form-group">
-            <ImageUpload
-              id="story_preview"
-              name="preview_file"
-              label="Превью истории"
-              onChange={handlePreviewFileChange}
-              previewUrl={formData.preview_local_url}
-              disabled={isSubmitting || formData.remove_preview}
-            />
-          </div>
-
-          {storyToEdit?.preview && (
-            <div className="form-group">
-              <Checkbox
-                id="remove_preview"
-                name="remove_preview"
-                label="Удалить текущее превью"
-                checked={formData.remove_preview}
-                onChange={handleRemovePreview}
-                disabled={isSubmitting}
-              />
-            </div>
-          )}
-        </div>
-
-        {/* --- ПРАВАЯ КОЛОНКА: Слайды --- */}
-        <div className="form-column">
-          <h4>Слайды истории</h4>
-          <div className="story-content-items-list">
-            {formData.content_items.map((item, index) => (
-              <ContentItemForm
-                key={item.id}
-                item={item}
-                index={index}
-                isSubmitting={isSubmitting}
-                onRemove={() => removeContentItem(item.id)}
-                onItemChange={handleContentItemChange}
-                onFileChange={handleContentItemFileChange}
-              />
-            ))}
-          </div>
-          <Button type="button" variant="outline" size="sm" onClick={addContentItem} disabled={isSubmitting}>
-            + Добавить слайд
-          </Button>
-        </div>
-      </div>
-      
-      <div className="form-actions">
-        <Button type="submit" disabled={isSubmitting} variant="success">
-          {isSubmitting ? 'Сохранение...' : 'Сохранить историю'}
-        </Button>
-        <Button type="button" onClick={onCancel} disabled={isSubmitting} variant="outline">
-          Отмена
-        </Button>
-      </div>
-    </form>
-  );
-};
-
-// --- Вложенный компонент для одного слайда ---
+// --- Вложенный компонент для одного слайда (без изменений) ---
 interface ContentItemFormProps {
   item: StoryContentItemFormData;
   index: number;
@@ -184,6 +82,128 @@ const ContentItemForm: React.FC<ContentItemFormProps> = ({
           disabled={isSubmitting}
         />
       </div>
+    </div>
+  );
+};
+
+
+export const StoryForm: React.FC<StoryFormProps> = ({
+  storyToEdit,
+  onSuccess,
+  onCancel,
+}) => {
+  const {
+    formData,
+    isSubmitting,
+    formError,
+    handleChange,
+    handlePreviewFileChange,
+    handleRemovePreview,
+    addContentItem,
+    removeContentItem,
+    handleContentItemChange,
+    handleContentItemFileChange,
+    handleSubmit,
+  } = useStoryForm({ storyToEdit, onSuccess });
+
+  // --- ИСПРАВЛЕНИЕ ОШИБКИ ТИПОВ ---
+  const slidesForPreview = useMemo(() => {
+    return formData.content_items.map(item => ({
+      type: item.type,
+      duration: parseFloat(item.duration) || 5,
+      // Преобразуем `string | null` в `string | undefined`
+      content: item.content_url ?? undefined,
+      file: item.content_file,
+    }));
+  }, [formData.content_items]);
+
+  return (
+    <div className="form-with-preview-layout">
+      {/* 1. Левая колонка с формой */}
+      <div className="form-with-preview-main">
+        <form onSubmit={handleSubmit} noValidate className="form-container">
+          {formError && <p className="form-error">Ошибка: {formError}</p>}
+          
+          {/* Убираем лишний grid, чтобы колонки управлялись CSS формы */}
+          {/* <div className="story-form-grid"> */}
+            <div className="form-column">
+              <h4>Основные настройки</h4>
+              <div className="form-group">
+                <label htmlFor="name">Название истории</label>
+                <Input id="name" name="name" value={formData.name} onChange={handleChange} disabled={isSubmitting} />
+              </div>
+
+              <div className="form-group">
+                <label htmlFor="expires_at">Дата и время истечения</label>
+                <Input id="expires_at" name="expires_at" type="datetime-local" value={formData.expires_at} onChange={handleChange} disabled={isSubmitting} />
+              </div>
+
+              <div className="form-group">
+                <Checkbox
+                  id="is_active" name="is_active" label="История активна"
+                  checked={formData.is_active}
+                  onChange={(checked) => handleChange({ target: { name: 'is_active', value: checked } } as any)}
+                  disabled={isSubmitting}
+                />
+              </div>
+
+              <div className="form-group">
+                <ImageUpload
+                  id="story_preview" name="preview_file" label="Превью истории"
+                  onChange={handlePreviewFileChange}
+                  previewUrl={formData.preview_local_url}
+                  disabled={isSubmitting || formData.remove_preview}
+                  buttonPosition="right"
+                />
+              </div>
+
+              {storyToEdit?.preview && (
+                <div className="form-group">
+                  <Checkbox
+                    id="remove_preview" name="remove_preview" label="Удалить текущее превью"
+                    checked={formData.remove_preview}
+                    onChange={handleRemovePreview}
+                    disabled={isSubmitting}
+                  />
+                </div>
+              )}
+            </div>
+
+            <div className="form-column">
+              <h4>Слайды истории</h4>
+              <div className="story-content-items-list">
+                {formData.content_items.map((item, index) => (
+                  <ContentItemForm
+                    key={item.id} item={item} index={index} isSubmitting={isSubmitting}
+                    onRemove={() => removeContentItem(item.id)}
+                    onItemChange={handleContentItemChange}
+                    onFileChange={handleContentItemFileChange}
+                  />
+                ))}
+              </div>
+              <Button type="button" variant="outline" size="sm" onClick={addContentItem} disabled={isSubmitting}>
+                + Добавить слайд
+              </Button>
+            </div>
+          {/* </div> */}
+          
+          <div className="form-actions">
+            <Button type="submit" disabled={isSubmitting} variant="success">
+              {isSubmitting ? 'Сохранение...' : 'Сохранить историю'}
+            </Button>
+            <Button type="button" onClick={onCancel} disabled={isSubmitting} variant="outline">
+              Отмена
+            </Button>
+          </div>
+        </form>
+      </div>
+
+      {/* 2. Правая колонка с предпросмотром */}
+      <aside className="form-with-preview-aside">
+        <div className="preview-sticky-container">
+          <StoryPreview slides={slidesForPreview} />
+        </div>
+      </aside>
     </div>
   );
 };

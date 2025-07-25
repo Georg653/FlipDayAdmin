@@ -1,4 +1,5 @@
 // --- Путь: src/components/admin/PointsManagement/PointForm.tsx ---
+// ПОЛНАЯ ВЕРСИЯ
 
 import React from 'react';
 import { DragDropContext, Droppable, Draggable } from '@hello-pangea/dnd';
@@ -6,35 +7,30 @@ import type { DropResult } from '@hello-pangea/dnd';
 
 import { usePointForm } from '../../../hooks/admin/Points/usePointForm';
 import type { PointFormProps } from '../../../types/admin/Points/point_props.types';
-import type { ContentBlockFormData } from '../../../types/admin/Points/point.types';
-
-// Переиспользуем UI-компоненты
 import { Button } from '../../ui/Button/Button';
 import { Input } from '../../ui/Input/Input';
 import { Textarea } from '../../ui/TextArea/Textarea';
 import { Checkbox } from '../../ui/Checkbox/Checkbox';
 import { ImageUpload } from '../../ui/ImageUpload/ImageUpload';
-// Переиспользуем компоненты конструктора из Новостей
 import { ContentBlockForm } from '../NewsManagement/ContentBlockForm';
 import { AddBlockPanel } from '../NewsManagement/AddBlockPanel';
+import { ContentPreview } from '../../previews/ContentPreview/ContentPreview';
 
 import '../../../styles/admin/ui/Form.css';
-import '../../admin/NewsManagement/NewsForm.css'; // Переиспользуем стили сетки из формы новостей
+import '../../../styles/admin/ui/Layouts.css';
+import '../NewsManagement/NewsForm.css';
+import './PointForm.css';
 
-export const PointForm: React.FC<PointFormProps> = ({ pointToEdit, onSuccess, onCancel }) => {
+export const PointForm: React.FC<PointFormProps> = ({
+  pointToEdit,
+  onSuccess,
+  onCancel,
+  isFetchingContent,
+}) => {
   const {
-    formData,
-    setFormData,
-    isSubmitting,
-    formError,
-    handleChange,
-    handleFileChange,
-    handleRemoveImage,
-    handleSubmit,
-    addBlock,
-    removeBlock,
-    updateBlock,
-    moveBlock,
+    formData, isSubmitting, formError, handleChange, handleFileChange, handleRemoveImage,
+    addBlock, removeBlock, updateBlock, moveBlock, handleSubmit,
+    previewData,
   } = usePointForm({ pointToEdit, onSuccess });
 
   const onDragEnd = (result: DropResult) => {
@@ -42,71 +38,71 @@ export const PointForm: React.FC<PointFormProps> = ({ pointToEdit, onSuccess, on
     moveBlock(result.source.index, result.destination.index);
   };
 
-  return (
-    <form onSubmit={handleSubmit} noValidate className="form-container news-form">
-      {formError && <p className="form-error">Ошибка: {formError}</p>}
-      
-      <div className="news-form-grid">
-        {/* --- ЛЕВАЯ КОЛОНКА: Основные настройки точки --- */}
-        <div className="form-column form-column-meta">
-          <h4>Основные данные точки</h4>
-          <div className="form-group">
-            <label htmlFor="name">Название*</label>
-            <Input id="name" name="name" value={formData.name} onChange={handleChange} required disabled={isSubmitting} />
-          </div>
-          <div className="form-group">
-            <label htmlFor="description">Описание*</label>
-            <Textarea id="description" name="description" value={formData.description} onChange={handleChange} required disabled={isSubmitting} rows={4}/>
-          </div>
-           <div className="form-group">
-            <label htmlFor="latitude">Широта (Latitude)*</label>
-            <Input id="latitude" name="latitude" type="number" value={formData.latitude} onChange={handleChange} required disabled={isSubmitting} step="any" />
-          </div>
-           <div className="form-group">
-            <label htmlFor="longitude">Долгота (Longitude)*</label>
-            <Input id="longitude" name="longitude" type="number" value={formData.longitude} onChange={handleChange} required disabled={isSubmitting} step="any" />
-          </div>
-          <div className="form-group">
-            <label htmlFor="budget">Бюджет*</label>
-            <Input id="budget" name="budget" type="number" value={formData.budget} onChange={handleChange} required disabled={isSubmitting} />
-          </div>
-          <div className="form-group">
-            <Checkbox id="is_partner" name="is_partner" label="Партнерская точка" checked={formData.is_partner} onChange={(checked) => setFormData(prev => ({...prev, is_partner: checked}))} disabled={isSubmitting} />
-          </div>
-          <div className="form-group">
-            <ImageUpload
-              id="point_image" name="image_file" label="Основное изображение"
-              onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
-              previewUrl={formData.image_file ? URL.createObjectURL(formData.image_file) : formData.image_url}
-              disabled={isSubmitting || formData.remove_image}
-            />
-            {pointToEdit?.image && (
-              <Checkbox id="remove_image" label="Удалить изображение" checked={formData.remove_image} onChange={handleRemoveImage} disabled={isSubmitting}/>
-            )}
-          </div>
-        </div>
+  const isLoading = isSubmitting || isFetchingContent;
 
-        {/* --- ПРАВАЯ КОЛОНКА: Конструктор контента --- */}
-        <div className="form-column form-column-content">
-          <h4>Дополнительный контент</h4>
-          <Checkbox id="has_content" name="has_content" label="Добавить/редактировать контент" checked={formData.has_content} onChange={(checked) => setFormData(prev => ({...prev, has_content: checked}))} disabled={isSubmitting} />
-          
-          {formData.has_content && (
-            <>
-              {pointToEdit?.content_data && (
-                <Checkbox id="remove_content" name="remove_content" label="Полностью удалить контент при сохранении" checked={formData.remove_content} onChange={(checked) => setFormData(prev => ({...prev, remove_content: checked}))} disabled={isSubmitting}/>
-              )}
+  if (isFetchingContent) {
+    return <div className="form-loading-message">Загрузка контента точки...</div>;
+  }
+
+  return (
+    <div className="form-with-preview-layout">
+      <div className="form-with-preview-main">
+        <form onSubmit={handleSubmit} noValidate className="point-form-container">
+          <div className="point-form-grid">
+            <div className="point-form-column-meta">
+              <h4>Основные настройки</h4>
+              <div className="form-group">
+                <label htmlFor="name">Название точки*</label>
+                <Input id="name" name="name" value={formData.name || ''} onChange={handleChange} required disabled={isLoading} />
+              </div>
+              <div className="form-group">
+                <label htmlFor="description">Описание*</label>
+                <Textarea id="description" name="description" value={formData.description || ''} onChange={handleChange} required disabled={isLoading} rows={4}/>
+              </div>
+              <div className="form-grid two-columns">
+                <div className="form-group">
+                  <label htmlFor="latitude">Широта (Latitude)*</label>
+                  <Input id="latitude" name="latitude" type="number" value={formData.latitude || ''} onChange={handleChange} required disabled={isLoading} />
+                </div>
+                <div className="form-group">
+                  <label htmlFor="longitude">Долгота (Longitude)*</label>
+                  <Input id="longitude" name="longitude" type="number" value={formData.longitude || ''} onChange={handleChange} required disabled={isLoading} />
+                </div>
+              </div>
+              <div className="form-grid two-columns">
+                <div className="form-group">
+                    <label htmlFor="budget">Бюджет*</label>
+                    <Input id="budget" name="budget" type="number" value={formData.budget || '0'} onChange={handleChange} required disabled={isLoading} />
+                </div>
+                <div className="form-group" style={{justifyContent: 'center'}}>
+                    <Checkbox
+                      id="is_partner" name="is_partner" label="Партнерская точка" checked={formData.is_partner || false}
+                      onChange={(checked: boolean) => handleChange({ target: { name: 'is_partner', value: checked, type: 'checkbox' } } as any)}
+                      disabled={isLoading} />
+                </div>
+              </div>
+              <div className="form-group">
+                <ImageUpload
+                  id="point_image" name="image_file" label="Основное изображение"
+                  onChange={(e) => handleFileChange(e.target.files?.[0] || null)}
+                  previewUrl={previewData.mainImage}
+                  disabled={isLoading || formData.remove_image}
+                  buttonPosition="right" />
+                {pointToEdit?.image && (
+                  <Checkbox id="remove_image" label="Удалить изображение" checked={formData.remove_image} onChange={handleRemoveImage} disabled={isLoading}/>
+                )}
+              </div>
+            </div>
+
+            <div className="point-form-column-content">
+              <h4>Конструктор контента</h4>
               <DragDropContext onDragEnd={onDragEnd}>
-                <Droppable droppableId="content-blocks">
+                <Droppable droppableId="point-content-blocks">
                   {(provided) => (
                     <div {...provided.droppableProps} ref={provided.innerRef} className="content-blocks-list">
-                      {formData.content.map((block, index) => (
+                      {(formData.content || []).map((block, index) => (
                         <Draggable key={block.id} draggableId={block.id} index={index}>
-                          {(provided) => (
-                            <div ref={provided.innerRef} {...provided.draggableProps} {...provided.dragHandleProps}>
-                              <ContentBlockForm block={block} index={index} isSubmitting={isSubmitting} onRemoveBlock={removeBlock} onUpdateBlock={updateBlock} onAddBlock={addBlock} onMoveBlockUp={() => moveBlock(index, index - 1)} onMoveBlockDown={() => moveBlock(index, index + 1)}/>
-                            </div>
-                          )}
+                          {(p) => (<div ref={p.innerRef} {...p.draggableProps} {...p.dragHandleProps}><ContentBlockForm block={block} index={index} isSubmitting={isLoading} onRemoveBlock={removeBlock} onUpdateBlock={updateBlock} onMoveBlockUp={()=>moveBlock(index, index-1)} onMoveBlockDown={()=>moveBlock(index, index+1)} onAddBlock={(type)=>addBlock(type)} /></div>)}
                         </Draggable>
                       ))}
                       {provided.placeholder}
@@ -114,16 +110,20 @@ export const PointForm: React.FC<PointFormProps> = ({ pointToEdit, onSuccess, on
                   )}
                 </Droppable>
               </DragDropContext>
-              <AddBlockPanel onAddBlock={(type) => addBlock(type, formData.content.length)} />
-            </>
-          )}
+              <AddBlockPanel onAddBlock={(type) => addBlock(type)} />
+            </div>
+          </div>
+          <div className="form-actions">
+            <Button type="submit" disabled={isLoading} variant="success">{isLoading ? 'Сохранение...' : 'Сохранить точку'}</Button>
+            <Button type="button" onClick={onCancel} disabled={isLoading} variant="outline">Отмена</Button>
+          </div>
+        </form>
+      </div>
+      <aside className="form-with-preview-aside">
+        <div className="preview-sticky-container">
+          <ContentPreview data={previewData} />
         </div>
-      </div>
-      
-      <div className="form-actions">
-        <Button type="submit" disabled={isSubmitting} variant="success">{isSubmitting ? 'Сохранение...' : 'Сохранить'}</Button>
-        <Button type="button" onClick={onCancel} disabled={isSubmitting} variant="outline">Отмена</Button>
-      </div>
-    </form>
+      </aside>
+    </div>
   );
 };

@@ -1,4 +1,5 @@
 // --- Путь: src/services/admin/Routes/routesApi.ts ---
+// ПОЛНАЯ ВЕРСИЯ
 
 import axiosInstance from '../api/axios';
 import { ENDPOINTS } from '../api/endpoints';
@@ -11,9 +12,7 @@ import type {
 } from '../../../types/admin/Routes/route.types';
 
 export const RoutesApi = {
-  // --- Запросы на чтение ---
-
-  getRoutesList: async (params: RouteFilterParams = {}): Promise<Route[]> => {
+  getRoutes: async (params: RouteFilterParams = {}): Promise<Route[]> => {
     const query = buildQueryString(params);
     const response = await axiosInstance.get<Route[]>(`${ENDPOINTS.ROUTES}${query}`);
     return Array.isArray(response.data) ? response.data : [];
@@ -23,8 +22,6 @@ export const RoutesApi = {
     const response = await axiosInstance.get<Route>(ENDPOINTS.ROUTE_DETAIL(routeId));
     return response.data;
   },
-
-  // --- Запросы на изменение ---
 
   deleteRoute: async (routeId: number): Promise<void> => {
     await axiosInstance.delete(ENDPOINTS.ROUTE_DETAIL(routeId));
@@ -49,21 +46,20 @@ export const RoutesApi = {
 
   updateRoute: async (
     routeId: number,
-    jsonData: Partial<RouteCreateUpdatePayload>,
+    jsonData: RouteCreateUpdatePayload, // Бэкенд ожидает полный объект
     imageFile: File | null,
     removeImage: boolean
   ): Promise<Route> => {
     const formData = new FormData();
-    formData.append('route_data_json', JSON.stringify(jsonData));
+    
+    // Добавляем флаг `remove_image` в JSON, как того ожидает бэкенд
+    const payloadWithFlags = { ...jsonData, remove_image: removeImage };
+    formData.append('route_data_json', JSON.stringify(payloadWithFlags));
 
     if (imageFile) {
       formData.append('image_file', imageFile);
     }
     
-    if (removeImage) {
-      formData.append('remove_image', 'true');
-    }
-
     const response = await axiosInstance.put<Route>(ENDPOINTS.ROUTE_DETAIL(routeId), formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });

@@ -1,91 +1,91 @@
 // --- Путь: src/services/admin/Points/pointsApi.ts ---
+// ПОЛНАЯ ВЕРСИЯ
 
 import axiosInstance from '../api/axios';
 import { ENDPOINTS } from '../api/endpoints';
 import { buildQueryString } from '../api/buildQuery';
 
-import type { 
-  Point, 
-  PointFilterParams, 
-  PointCreateUpdatePayload 
+import type {
+  PointBase,
+  PointContentData,
+  PointFilterParams,
+  PointCreateUpdatePayload,
 } from '../../../types/admin/Points/point.types';
 
 export const PointsApi = {
-  // --- Запросы на чтение ---
-
-  getPointsList: async (params: PointFilterParams = {}): Promise<Point[]> => {
+  /**
+   * Получает список точек (БЕЗ контента).
+   */
+  getPoints: async (params: PointFilterParams = {}): Promise<PointBase[]> => {
     const query = buildQueryString(params);
-    const response = await axiosInstance.get<Point[]>(`${ENDPOINTS.POINTS}${query}`);
+    const response = await axiosInstance.get<PointBase[]>(`${ENDPOINTS.POINTS}${query}`);
     return Array.isArray(response.data) ? response.data : [];
   },
 
-  getPointById: async (pointId: number): Promise<Point> => {
-    // Получаем основную инфу о точке
-    const pointPromise = axiosInstance.get<Point>(ENDPOINTS.POINT_DETAIL(pointId));
-    // Пытаемся получить ее контент
-    const contentPromise = axiosInstance.get(ENDPOINTS.POINT_CONTENT(pointId)).catch(() => null);
-
-    const [pointResponse, contentResponse] = await Promise.all([pointPromise, contentPromise]);
-
-    // Собираем все в один объект
-    const pointData = pointResponse.data;
-    if (contentResponse && contentResponse.data) {
-      pointData.content_data = contentResponse.data;
-    }
-
-    return pointData;
+  /**
+   * Получает КОНТЕНТ для одной точки.
+   */
+  getPointContent: async (pointId: number): Promise<PointContentData> => {
+    // ВАЖНО: Убедимся, что эндпоинт правильный (со слешем или без)
+    const url = ENDPOINTS.POINT_CONTENT(pointId);
+    const response = await axiosInstance.get<PointContentData>(url);
+    return response.data;
   },
 
-  // --- Запросы на изменение ---
-
+  /**
+   * Удаляет точку по ее ID.
+   */
   deletePoint: async (pointId: number): Promise<void> => {
     await axiosInstance.delete(ENDPOINTS.POINT_DETAIL(pointId));
   },
-  
+
+  /**
+   * Создает новую точку.
+   */
   createPoint: async (
     jsonData: PointCreateUpdatePayload,
-    pointImageFile: File | null,
-    contentMediaFiles: File[]
-  ): Promise<Point> => {
+    imageFile: File | null,
+    contentFiles: File[]
+  ): Promise<PointBase> => {
     const formData = new FormData();
     formData.append('point_data_json', JSON.stringify(jsonData));
-
-    if (pointImageFile) {
-      formData.append('point_image_file', pointImageFile);
+    if (imageFile) {
+      formData.append('point_image_file', imageFile);
     }
-    
-    contentMediaFiles.forEach(file => {
+    contentFiles.forEach(file => {
       formData.append('content_media_files', file);
     });
 
-    const response = await axiosInstance.post<Point>(ENDPOINTS.POINTS, formData, {
+    const response = await axiosInstance.post<PointBase>(ENDPOINTS.POINTS, formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;
   },
 
+  /**
+   * Обновляет существующую точку.
+   */
   updatePoint: async (
     pointId: number,
     jsonData: PointCreateUpdatePayload,
-    pointImageFile: File | null,
-    contentMediaFiles: File[],
-    removePointImage: boolean,
-  ): Promise<Point> => {
+    imageFile: File | null,
+    contentFiles: File[],
+    removeImage: boolean
+  ): Promise<PointBase> => {
     const formData = new FormData();
     formData.append('point_data_json', JSON.stringify(jsonData));
 
-    if (pointImageFile) {
-      formData.append('point_image_file', pointImageFile);
+    if (imageFile) {
+      formData.append('point_image_file', imageFile);
     }
-    if (removePointImage) {
+    if (removeImage) {
       formData.append('remove_point_image', 'true');
     }
-    
-    contentMediaFiles.forEach(file => {
+    contentFiles.forEach(file => {
       formData.append('content_media_files', file);
     });
 
-    const response = await axiosInstance.put<Point>(ENDPOINTS.POINT_DETAIL(pointId), formData, {
+    const response = await axiosInstance.put<PointBase>(ENDPOINTS.POINT_DETAIL(pointId), formData, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     return response.data;

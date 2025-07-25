@@ -247,3 +247,22 @@
 .status-inactive .status-dot {
   background-color: #6c757d; /* серый */
 }
+
+
+
+/* --- Стили для подсветки активной строки для превью --- */
+
+.table-body-row[data-has-preview="true"] {
+  cursor: pointer;
+  transition: background-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+.table-body-row[data-has-preview="true"]:hover {
+  background-color: #f9fafb; /* Светло-серый фон при наведении */
+}
+
+.table-body-row.is-active-for-preview,
+.table-body-row.is-active-for-preview:hover {
+  background-color: #eff6ff; /* Голубоватый фон */
+  box-shadow: inset 4px 0 0 0 #3b82f6; /* Синяя полоска слева */
+}

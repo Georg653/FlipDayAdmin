@@ -1,11 +1,28 @@
 // --- Путь: src/components/admin/NewsManagement/NewsTable.tsx ---
+// ПОЛНАЯ ВЕРСИЯ
 
 import React from 'react';
-import type { NewsTableProps } from '../../../types/admin/News/news_props.types';
 import { Button } from '../../ui/Button/Button';
 import { Pagination } from '../../ui/Pagination/Pagination';
 import { createImageUrl } from '../../../utils/media';
+import type { News } from '../../../types/admin/News/news.types';
 import '../../../styles/admin/ui/Table.css';
+
+// Изменяем пропсы, чтобы включить onPreview и activePreviewId
+export interface NewsTableProps {
+  newsItems: News[];
+  isLoading: boolean;
+  error: string | null;
+  onEdit: (newsItem: News) => void;
+  onDelete: (id: number) => void;
+  onPreview: (newsItem: News) => void;
+  activePreviewId?: number | null;
+  currentPage: number;
+  canGoNext: boolean;
+  canGoPrevious: boolean;
+  handleNextPage: () => void;
+  handlePreviousPage: () => void;
+}
 
 export const NewsTable: React.FC<NewsTableProps> = ({
   newsItems,
@@ -13,13 +30,14 @@ export const NewsTable: React.FC<NewsTableProps> = ({
   error,
   onEdit,
   onDelete,
+  onPreview,
+  activePreviewId,
   currentPage,
   canGoNext,
   canGoPrevious,
   handleNextPage,
   handlePreviousPage,
 }) => {
-  
   const formatDate = (dateString?: string | null) => {
     if (!dateString) return '—';
     return new Date(dateString).toLocaleDateString('ru-RU', {
@@ -35,11 +53,9 @@ export const NewsTable: React.FC<NewsTableProps> = ({
   if (isLoading) {
     return <div className="table-status-message">Загрузка новостей...</div>;
   }
-
   if (error) {
     return <div className="table-status-message table-status-error">Ошибка: {error}</div>;
   }
-
   if (!newsItems.length) {
     return <div className="table-status-message">Новости не найдены.</div>;
   }
@@ -61,8 +77,14 @@ export const NewsTable: React.FC<NewsTableProps> = ({
           <tbody>
             {newsItems.map((news) => {
               const imageUrl = createImageUrl(news.preview);
+              const isActive = activePreviewId === news.id;
               return (
-                <tr key={news.id} className="table-body-row">
+                <tr
+                  key={news.id}
+                  className={`table-body-row ${isActive ? 'is-active-for-preview' : ''}`}
+                  onClick={() => onPreview(news)}
+                  data-has-preview="true"
+                >
                   <td className="table-body-cell">{news.id}</td>
                   <td className="table-body-cell">
                     {imageUrl ? (
@@ -76,8 +98,8 @@ export const NewsTable: React.FC<NewsTableProps> = ({
                   <td className="table-body-cell">{formatDate(news.created_at)}</td>
                   <td className="table-body-cell">
                     <div className="table-actions-container">
-                      <Button variant="link" size="sm" onClick={() => onEdit(news)}>Ред.</Button>
-                      <Button variant="link" size="sm" className="table-action-button-delete" onClick={() => onDelete(news.id)}>Удал.</Button>
+                      <Button variant="link" size="sm" onClick={(e) => { e.stopPropagation(); onEdit(news); }}>Ред.</Button>
+                      <Button variant="link" size="sm" className="table-action-button-delete" onClick={(e) => { e.stopPropagation(); onDelete(news.id); }}>Удал.</Button>
                     </div>
                   </td>
                 </tr>

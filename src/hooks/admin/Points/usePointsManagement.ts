@@ -1,100 +1,107 @@
 // --- Путь: src/hooks/admin/Points/usePointsManagement.ts ---
+// ПОЛНАЯ ВЕРСИЯ
 
 import { useState, useEffect, useCallback } from 'react';
-import type { Point } from '../../../types/admin/Points/point.types';
+import type { Point, PointBase } from '../../../types/admin/Points/point.types';
 import { PointsApi } from '../../../services/admin/Points/pointsApi';
 
+const ITEMS_PER_PAGE = 15;
+
 export const usePointsManagement = () => {
-  // --- Состояние для данных ---
-  const [points, setPoints] = useState<Point[]>([]);
+  const [points, setPoints] = useState<PointBase[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-
-  // --- Состояние для модального окна формы ---
+  
+  const [currentPage, setCurrentPage] = useState(1);
+  const [hasNextPage, setHasNextPage] = useState(false);
+  
   const [showForm, setShowForm] = useState(false);
   const [pointToEdit, setPointToEdit] = useState<Point | null>(null);
+  const [isFetchingContent, setIsFetchingContent] = useState(false);
 
-  // --- Функция загрузки данных с бэка ---
-  const fetchPoints = useCallback(async () => {
+  const fetchPoints = useCallback(async (page: number) => {
     setLoading(true);
     setError(null);
     try {
-      // Бэк пока не поддерживает пагинацию, загружаем все
-      const data = await PointsApi.getPointsList();
+      const data = await PointsApi.getPoints({
+        offset: (page - 1) * ITEMS_PER_PAGE,
+        limit: ITEMS_PER_PAGE,
+      });
       setPoints(data);
+      setHasNextPage(data.length === ITEMS_PER_PAGE);
     } catch (err: any) {
-      let errorMessage = 'Ошибка загрузки точек.';
-      if (err.response?.data?.detail) {
-        const detail = err.response.data.detail;
-        errorMessage = typeof detail === 'object' ? JSON.stringify(detail, null, 2) : String(detail);
-      }
-      setError(errorMessage);
+      setError('Ошибка загрузки точек.');
       setPoints([]);
     } finally {
       setLoading(false);
     }
   }, []);
 
-  // Эффект, который вызывает загрузку при первом рендере
   useEffect(() => {
-    fetchPoints();
-  }, [fetchPoints]);
-  
-  // --- Обработчики действий пользователя ---
-
-  const handleEdit = async (point: Point) => {
-    // Перед открытием формы нужно подгрузить детальную инфу (включая контент)
-    setLoading(true);
-    try {
-        const detailedPoint = await PointsApi.getPointById(point.id);
-        setPointToEdit(detailedPoint);
-        setShowForm(true);
-    } catch (err) {
-        setError('Не удалось загрузить детальную информацию о точке.');
-    } finally {
-        setLoading(false);
-    }
-  };
+    fetchPoints(currentPage);
+  }, [currentPage, fetchPoints]);
 
   const handleShowAddForm = () => {
     setPointToEdit(null);
     setShowForm(true);
   };
 
+  const handleEdit = async (pointBase: PointBase) => {
+    setPointToEdit(null);
+    setIsFetchingContent(true);
+    setShowForm(true);
+    try {
+      const contentData = await PointsApi.getPointContent(pointBase.id);
+      setPointToEdit({ ...pointBase, ...contentData });
+    } catch (err: any) {
+      // --- ГЛАВНЫЙ ФИКС ЗДЕСЬ ---
+      // Если ошибка 404, это значит, у точки просто еще нет контента.
+      // Это не ошибка, а нормальная ситуация.
+      if (err.response && err.response.status === 404) {
+        // Мы открываем форму с пустым контентом.
+        setPointToEdit({ ...pointBase, content: [] });
+      } else {
+        // А вот если другая ошибка - сообщаем о ней.
+        setError('Ошибка загрузки контента точки.');
+        setShowForm(false);
+      }
+    } finally {
+      setIsFetchingContent(false);
+    }
+  };
+
   const handleDelete = async (id: number) => {
     if (!window.confirm('Вы уверены, что хотите удалить эту точку?')) return;
     
     const originalPoints = [...points];
-    setPoints(items => items.filter(item => item.id !== id));
+    setPoints(currentPoints => currentPoints.filter(p => p.id !== id));
 
     try {
       await PointsApi.deletePoint(id);
+      if (points.length === 1 && currentPage > 1) {
+          setCurrentPage(p => p - 1);
+      }
     } catch (err: any) {
-      const detail = err.response?.data?.detail;
-      setError(detail || 'Ошибка удаления точки.');
+      setError('Ошибка удаления.');
       setPoints(originalPoints);
     }
   };
 
-  // Вызывается после успешного сохранения формы
-  const handleFormSuccess = () => {
+  const handleFormSuccess = (updatedPoint: PointBase) => {
     setShowForm(false);
     setPointToEdit(null);
-    // Просто перезагружаем весь список, т.к. пагинации нет
-    fetchPoints();
+    setPoints(prevPoints => 
+        prevPoints.map(p => p.id === updatedPoint.id ? { ...p, ...updatedPoint } : p)
+    );
   };
   
-  // --- Возвращаем всё, что нужно для UI-компонентов ---
+  const handlePreviousPage = () => { if (currentPage > 1) setCurrentPage(p => p - 1); };
+  const handleNextPage = () => { if (hasNextPage) setCurrentPage(p => p + 1); };
+
   return {
-    points,
-    loading,
-    error,
-    handleEdit,
-    handleShowAddForm,
-    handleDelete,
-    handleFormSuccess,
-    showForm,
-    setShowForm,
-    pointToEdit,
+    points, loading, error, handleEdit, handleDelete, handleShowAddForm, handleFormSuccess,
+    showForm, setShowForm, pointToEdit, isFetchingContent,
+    currentPage, canGoNext: hasNextPage, canGoPrevious: currentPage > 1,
+    handlePreviousPage, handleNextPage,
   };
 };
