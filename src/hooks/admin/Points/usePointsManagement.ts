@@ -4,6 +4,7 @@
 import { useState, useEffect, useCallback } from 'react';
 import type { Point, PointBase } from '../../../types/admin/Points/point.types';
 import { PointsApi } from '../../../services/admin/Points/pointsApi';
+import { useDebounce } from '../Routes/useDebounce';
 
 const ITEMS_PER_PAGE = 15;
 
@@ -15,17 +16,21 @@ export const usePointsManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [hasNextPage, setHasNextPage] = useState(false);
   
+  const [searchFilter, setSearchFilter] = useState('');
+  const debouncedSearchFilter = useDebounce(searchFilter, 500);
+  
   const [showForm, setShowForm] = useState(false);
   const [pointToEdit, setPointToEdit] = useState<Point | null>(null);
   const [isFetchingContent, setIsFetchingContent] = useState(false);
 
-  const fetchPoints = useCallback(async (page: number) => {
+  const fetchPoints = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
       const data = await PointsApi.getPoints({
-        offset: (page - 1) * ITEMS_PER_PAGE,
+        offset: (currentPage - 1) * ITEMS_PER_PAGE,
         limit: ITEMS_PER_PAGE,
+        name: debouncedSearchFilter || undefined,
       });
       setPoints(data);
       setHasNextPage(data.length === ITEMS_PER_PAGE);
@@ -35,11 +40,16 @@ export const usePointsManagement = () => {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [currentPage, debouncedSearchFilter]); // <--- ПРАВИЛЬНЫЕ ЗАВИСИМОСТИ
 
   useEffect(() => {
-    fetchPoints(currentPage);
-  }, [currentPage, fetchPoints]);
+    fetchPoints();
+  }, [fetchPoints]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setCurrentPage(1);
+    setSearchFilter(e.target.value);
+  };
 
   const handleShowAddForm = () => {
     setPointToEdit(null);
@@ -54,14 +64,9 @@ export const usePointsManagement = () => {
       const contentData = await PointsApi.getPointContent(pointBase.id);
       setPointToEdit({ ...pointBase, ...contentData });
     } catch (err: any) {
-      // --- ГЛАВНЫЙ ФИКС ЗДЕСЬ ---
-      // Если ошибка 404, это значит, у точки просто еще нет контента.
-      // Это не ошибка, а нормальная ситуация.
       if (err.response && err.response.status === 404) {
-        // Мы открываем форму с пустым контентом.
         setPointToEdit({ ...pointBase, content: [] });
       } else {
-        // А вот если другая ошибка - сообщаем о ней.
         setError('Ошибка загрузки контента точки.');
         setShowForm(false);
       }
@@ -72,14 +77,14 @@ export const usePointsManagement = () => {
 
   const handleDelete = async (id: number) => {
     if (!window.confirm('Вы уверены, что хотите удалить эту точку?')) return;
-    
     const originalPoints = [...points];
     setPoints(currentPoints => currentPoints.filter(p => p.id !== id));
-
     try {
       await PointsApi.deletePoint(id);
       if (points.length === 1 && currentPage > 1) {
           setCurrentPage(p => p - 1);
+      } else {
+          fetchPoints(); // Перезагружаем текущую страницу
       }
     } catch (err: any) {
       setError('Ошибка удаления.');
@@ -103,5 +108,6 @@ export const usePointsManagement = () => {
     showForm, setShowForm, pointToEdit, isFetchingContent,
     currentPage, canGoNext: hasNextPage, canGoPrevious: currentPage > 1,
     handlePreviousPage, handleNextPage,
+    searchFilter, handleSearchChange,
   };
 };

@@ -1,5 +1,5 @@
 // --- Путь: src/components/ui/Pagination/Pagination.tsx ---
-// ПОЛНАЯ ПЕРЕПИСАННАЯ ВЕРСИЯ
+// ПОЛНАЯ ВЕРСИЯ
 
 import React from 'react';
 import { Button } from '../Button/Button';
@@ -13,8 +13,6 @@ interface PaginationProps {
   canGoNext: boolean;
   canGoPrevious: boolean;
   
-  // Эти пропсы мы оставляем для обратной совместимости,
-  // но в текущей логике "слепой" пагинации они не используются
   totalItems?: number;
   itemsPerPage?: number;
 }
@@ -27,22 +25,15 @@ export const Pagination: React.FC<PaginationProps> = ({
   canGoNext,
   canGoPrevious,
 }) => {
-  // --- УПРОЩЕННАЯ И НАДЕЖНАЯ ЛОГИКА ---
-
-  // 1. Определяем, нужно ли вообще показывать пагинацию.
-  // Она нужна только если есть возможность перейти на предыдущую ИЛИ на следующую страницу.
-  const shouldShowPagination = canGoPrevious || canGoNext;
-
-  // Если пагинация не нужна, просто ничего не рендерим.
-  if (!shouldShowPagination) {
+  // --- ЖЕЛЕЗОБЕТОННАЯ ЛОГИКА ---
+  // Компонент должен исчезнуть ТОЛЬКО в одном случае:
+  // когда мы на первой странице И точно знаем, что следующей страницы НЕТ.
+  if (currentPage === 1 && !canGoNext) {
     return null;
   }
 
-  // 2. Определяем, заблокированы ли кнопки.
-  // Кнопка "Назад" заблокирована, если идет загрузка ИЛИ если canGoPrevious = false.
+  // Логика блокировки кнопок. Она простая и правильная.
   const isPrevDisabled = isLoading || !canGoPrevious;
-  
-  // Кнопка "Вперед" заблокирована, если идет загрузка ИЛИ если canGoNext = false.
   const isNextDisabled = isLoading || !canGoNext;
 
   return (

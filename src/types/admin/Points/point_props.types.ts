@@ -20,13 +20,16 @@ export interface PointsTableProps {
   handlePreviousPage: () => void;
 }
 
+// --- ИЗМЕНЕНИЯ ЗДЕСЬ ---
 export interface PointsHeaderProps {
   isLoading: boolean;
   onShowForm: () => void;
+  searchFilter: string;
+  onSearchChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
 }
 
 export interface PointFormProps {
-  pointToEdit: Point | null; // Форма работает с полным объектом
+  pointToEdit: Point | null;
   onSuccess: (updatedPoint: PointBase) => void;
   onCancel: () => void;
   isFetchingContent: boolean;

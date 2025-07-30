@@ -44,10 +44,9 @@ export const RoutePointsManager: React.FC<RoutePointsManagerProps> = ({
   };
 
   return (
-    <div className="points-manager">
-      {/* Левая колонка: все доступные точки */}
-      <div className="points-column">
-        <h5 className="points-column-title">Доступные точки</h5>
+    // Этот div теперь главный контейнер для менеджера
+    <div style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <div className="form-group" style={{ flexShrink: 0, marginBottom: '1rem' }}>
         <Input
           type="text"
           placeholder="Поиск по названию..."
@@ -56,46 +55,53 @@ export const RoutePointsManager: React.FC<RoutePointsManagerProps> = ({
           className="points-search-input"
           disabled={disabled}
         />
-        <ul className="points-list">
-          {availablePoints.map(point => (
-            <li key={point.id} className="point-item available">
-              <span className="point-name">{point.name} (ID: {point.id})</span>
-              <Button size="sm" variant="outline" onClick={() => handleAddPoint(point)} disabled={disabled}>Добавить →</Button>
-            </li>
-          ))}
-          {availablePoints.length === 0 && <li className="point-item-empty">Нет доступных точек</li>}
-        </ul>
       </div>
 
-      {/* Правая колонка: выбранные точки */}
-      <div className="points-column">
-        <h5 className="points-column-title">Точки в маршруте ({selectedPoints.length})</h5>
-        <DragDropContext onDragEnd={onDragEnd}>
-          <Droppable droppableId="selected-points">
-            {(provided) => (
-              <ul {...provided.droppableProps} ref={provided.innerRef} className="points-list selected">
-                {selectedPoints.map((point, index) => (
-                  <Draggable key={point.id} draggableId={String(point.id)} index={index}>
-                    {(provided) => (
-                      <li
-                        ref={provided.innerRef}
-                        {...provided.draggableProps}
-                        {...provided.dragHandleProps}
-                        className="point-item selected"
-                      >
-                        <span className="point-order">{index + 1}.</span>
-                        <span className="point-name">{point.name}</span>
-                        <Button size="sm" variant="destructive" onClick={() => handleRemovePoint(point.id)} disabled={disabled}>×</Button>
-                      </li>
-                    )}
-                  </Draggable>
-                ))}
-                {provided.placeholder}
-                 {selectedPoints.length === 0 && <li className="point-item-empty">Перетащите или добавьте точки</li>}
-              </ul>
-            )}
-          </Droppable>
-        </DragDropContext>
+      <div className="points-manager">
+        {/* Левая колонка: все доступные точки */}
+        <div className="points-column">
+          <h5 className="points-column-title">Доступные точки ({availablePoints.length})</h5>
+          <ul className="points-list">
+            {availablePoints.map(point => (
+              <li key={point.id} className="point-item available">
+                <span className="point-name">{point.name} (ID: {point.id})</span>
+                <Button size="sm" variant="outline" onClick={() => handleAddPoint(point)} disabled={disabled}>Добавить →</Button>
+              </li>
+            ))}
+            {availablePoints.length === 0 && <li className="point-item-empty">Нет доступных точек</li>}
+          </ul>
+        </div>
+
+        {/* Правая колонка: выбранные точки */}
+        <div className="points-column">
+          <h5 className="points-column-title">Точки в маршруте ({selectedPoints.length})</h5>
+          <DragDropContext onDragEnd={onDragEnd}>
+            <Droppable droppableId="selected-points">
+              {(provided) => (
+                <ul {...provided.droppableProps} ref={provided.innerRef} className="points-list selected">
+                  {selectedPoints.map((point, index) => (
+                    <Draggable key={point.id} draggableId={String(point.id)} index={index}>
+                      {(provided) => (
+                        <li
+                          ref={provided.innerRef}
+                          {...provided.draggableProps}
+                          {...provided.dragHandleProps}
+                          className="point-item selected"
+                        >
+                          <span className="point-order">{index + 1}.</span>
+                          <span className="point-name">{point.name}</span>
+                          <Button size="sm" variant="destructive" onClick={() => handleRemovePoint(point.id)} disabled={disabled}>×</Button>
+                        </li>
+                      )}
+                    </Draggable>
+                  ))}
+                  {provided.placeholder}
+                  {selectedPoints.length === 0 && <li className="point-item-empty">Перетащите или добавьте точки</li>}
+                </ul>
+              )}
+            </Droppable>
+          </DragDropContext>
+        </div>
       </div>
     </div>
   );

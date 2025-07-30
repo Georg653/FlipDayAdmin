@@ -19,6 +19,7 @@ export const PointsManagement: React.FC = () => {
     points, loading, error, handleEdit, handleDelete, handleShowAddForm, handleFormSuccess,
     showForm, setShowForm, pointToEdit, isFetchingContent,
     currentPage, canGoNext, canGoPrevious, handleNextPage, handlePreviousPage,
+    searchFilter, handleSearchChange,
   } = usePointsManagement();
 
   const [itemToPreview, setItemToPreview] = useState<Point | null>(null);
@@ -30,14 +31,12 @@ export const PointsManagement: React.FC = () => {
       return;
     }
     setIsPreviewLoading(true);
-    setItemToPreview({ ...point, content: [] });
+    setItemToPreview({ ...point, content: [] }); 
     
     try {
       const contentData = await PointsApi.getPointContent(point.id);
       setItemToPreview({ ...point, ...contentData });
     } catch (error: any) {
-      // --- ГЛАВНЫЙ ФИКС ЗДЕСЬ ---
-      // Если 404, то просто показываем превью без контента.
       if (error.response && error.response.status === 404) {
         setItemToPreview({ ...point, content: [] });
       } else {
@@ -57,6 +56,8 @@ export const PointsManagement: React.FC = () => {
         <PointsHeader
           isLoading={loading}
           onShowForm={handleShowAddForm}
+          searchFilter={searchFilter}
+          onSearchChange={handleSearchChange}
         />
         <PointsTable
           points={points}
