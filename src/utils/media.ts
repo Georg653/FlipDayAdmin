@@ -20,7 +20,7 @@ export const createImageUrl = (relativePath: string | null | undefined): string 
   const backendUrl = import.meta.env.VITE_MINIO_URL || "https://api.monobuket-mk.by/api/download";
   if (!backendUrl) {
     console.error("КРИТИЧЕСКАЯ ОШИБКА: VITE_MINIO_URL не задана в .env файле!");
-    return `http://localhost:9000/media/${relativePath.startsWith('/') ? relativePath.slice(1) : relativePath}`;
+    return `https://api.monobuket-mk.by/api/download/${relativePath.startsWith('/') ? relativePath.slice(1) : relativePath}`;
   }
   const mediaPrefix = '/media/';
   const cleanBackendUrl = backendUrl.endsWith('/') ? backendUrl.slice(0, -1) : backendUrl;
