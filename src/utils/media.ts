@@ -17,7 +17,7 @@ export const createImageUrl = (relativePath: string | null | undefined): string 
   if (relativePath.startsWith('http://') || relativePath.startsWith('https://') || relativePath.startsWith('blob:')) {
     return relativePath;
   }
-  const backendUrl = import.meta.env.VITE_MINIO_URL || "http://localhost:9000";
+  const backendUrl = import.meta.env.VITE_MINIO_URL || "https://api.monobuket-mk.by/api/download";
   if (!backendUrl) {
     console.error("КРИТИЧЕСКАЯ ОШИБКА: VITE_MINIO_URL не задана в .env файле!");
     return `http://localhost:9000/media/${relativePath.startsWith('/') ? relativePath.slice(1) : relativePath}`;
