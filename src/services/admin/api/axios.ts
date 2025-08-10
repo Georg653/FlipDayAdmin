@@ -4,7 +4,7 @@ import axios from 'axios';
 // КОММЕНТАРИЙ: Указываем полный URL. 
 // Это самый надежный способ, который игнорирует настройки прокси и работает всегда.
 const axiosInstance = axios.create({
-  baseURL: 'http://localhost:8003/api/v1/admin',
+  baseURL: 'https://api.monobuket-mk.by/api/v1/admin',
   headers: {
     'Content-Type': 'application/json',
   },
