@@ -2,7 +2,7 @@
 
 export const ENDPOINTS = {
   // AUTHENTICATION
-  LOGIN: `auth/`, // Логин на baseURL /v1/admin/
+  LOGIN: ``, // Логин на baseURL /v1/admin/
   REGISTER: `register/`,
   TOKEN_REFRESH: `token/refresh/`,
   
